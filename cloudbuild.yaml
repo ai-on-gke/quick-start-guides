@@ -153,7 +153,7 @@ steps:
 
 - id: 'Copy metadata'
   name: 'ubuntu'
-  entrypoint: 'bash'
+  entrypoint: 'sh'
   args:
   - '-c'
   - |
@@ -172,7 +172,7 @@ steps:
 # gcr.io/${_PROJECT_ID}/check_violations:latest is your application image: This image contains your security check tool and its dependencies. It's designed to be run, not to build or run other Docker images.
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Run shipshape on cluster'
-  entrypoint: 'bash'
+  entrypoint: 'sh'
   args:
   - '-c'
   - |
@@ -196,7 +196,7 @@ steps:
 
 - id: 'Run Shipshape on helm'
   name: 'gcr.io/cloud-builders/docker'
-  entrypoint: 'bash'
+  entrypoint: 'sh'
   args:
   - '-c'
   - |
@@ -217,7 +217,7 @@ steps:
 - id: 'cleanup rag'
   # name: 'gcr.io/$PROJECT_ID/terraform'
   name: "hashicorp/terraform:latest"
-  entrypoint: 'bash'
+  entrypoint: 'sh'
   args:
   - '-c'
   - |
@@ -246,7 +246,7 @@ steps:
 - id: 'cleanup gke cluster'
   # name: 'gcr.io/$PROJECT_ID/terraform'
   name: "hashicorp/terraform:latest"
-  entrypoint: 'bash'
+  entrypoint: 'sh'
   args:
   - '-c'
   - |
@@ -266,7 +266,7 @@ steps:
 - id: 'check result'
   # name: 'gcr.io/$PROJECT_ID/terraform'
   name: "hashicorp/terraform:latest"
-  entrypoint: 'bash'
+  entrypoint: 'sh'
   args:
   - '-c'
   - |
