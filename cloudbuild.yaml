@@ -19,7 +19,7 @@ steps:
   script: |
     terraform init -no-color
     terraform validate -no-color
-  dir: "infrastructure/"
+  dir: "common/infrastructure/"
   waitFor: ["-"]
 
 - id: "validate rag"
@@ -28,7 +28,7 @@ steps:
   script: |
     terraform init -no-color
     terraform validate -no-color
-  dir: "applications/rag/"
+  dir: "rag/"
   waitFor: ["validate platform"]
 
 - id: 'create gke cluster'
@@ -55,7 +55,7 @@ steps:
     -var='gpu_pools=[{initial_node_count=2,name="gpu-pool",machine_type="g2-standard-24",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-balanced",accelerator_count=2,accelerator_type="nvidia-l4",gpu_driver_version="DEFAULT",}]' \
     -auto-approve -no-color
     echo "pass" > /workspace/gke_cluster_result.txt
-  dir: 'infrastructure/'
+  dir: "common/infrastructure/"
   allowFailure: true
   waitFor: ['validate platform', validate rag]
 
@@ -223,7 +223,6 @@ steps:
   - |
     set -e
 
-    cd /workspace/applications/rag/
     terraform destroy \
     -var-file=workloads.tfvars \
     -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
@@ -241,6 +240,7 @@ steps:
     -var=cloudsql_instance=pgvector-instance-$SHORT_SHA-$_BUILD_ID \
     -auto-approve -no-color
   allowFailure: true
+  dir: "rag/"
   waitFor: ['Run shipshape on cluster', 'Run Shipshape on helm']
 
 - id: 'cleanup gke cluster'
@@ -252,7 +252,6 @@ steps:
   - |
     set -e
 
-    cd /workspace/infrastructure
     terraform destroy -var-file=tfvars_tests/standard-gke-public.platform.tfvars -var=project_id=$PROJECT_ID \
     -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
     -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
@@ -260,6 +259,7 @@ steps:
     -var=autopilot_cluster=$_AUTOPILOT_CLUSTER \
     -var=cluster_location=$_REGION -auto-approve -no-color
 
+  dir: "common/infrastructure/"
   allowFailure: true
   waitFor: ['cleanup rag']
 
