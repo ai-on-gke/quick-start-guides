@@ -191,9 +191,11 @@ steps:
   - |
     set -e
 
-    apt update
-    apt install python3-venv --assume-yes
-    apt install python3-pip --assume-yes
+    apk update && \
+    apk add --no-cache \
+        python3 \
+        py3-pip \
+        py3-virtualenv
 
     cd /workspace/common/modules/jupyter/tests
     python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
