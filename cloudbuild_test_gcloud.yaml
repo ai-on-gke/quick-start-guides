@@ -69,7 +69,8 @@ steps:
   - 'container'
   - 'clusters'
   - 'get-credentials'
-  - 'ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster'
+  # - 'ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster'
+  - 'ml-373a855--7e5eca7e-cluster'
   - '--region=${_REGION}'
   - '--project=$PROJECT_ID'
   allowFailure: true
