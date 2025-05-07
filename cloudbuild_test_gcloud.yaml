@@ -413,9 +413,9 @@ options:
   substitutionOption: "ALLOW_LOOSE"
   machineType: "E2_HIGHCPU_8"
 timeout: 5400s
-availableSecrets:
-  secretManager:
-  - versionName: projects/ai-on-gke-qss/secrets/cloudbuild-kaggle-username/versions/latest
-    env: "KAGGLE_USERNAME"
-  - versionName: projects/ai-on-gke-qss/secrets/cloudbuild-kaggle-key/versions/latest
-    env: "KAGGLE_KEY"
+# availableSecrets:
+#   secretManager:
+#   - versionName: projects/ai-on-gke-qss/secrets/cloudbuild-kaggle-username/versions/latest
+#     env: "KAGGLE_USERNAME"
+#   - versionName: projects/ai-on-gke-qss/secrets/cloudbuild-kaggle-key/versions/latest
+#     env: "KAGGLE_KEY"
