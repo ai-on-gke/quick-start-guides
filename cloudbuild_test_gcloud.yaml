@@ -87,15 +87,6 @@ steps:
   allowFailure: true
   waitFor: ['create gke cluster']
 
-- id: "Test kubectl"
-  name: "gcr.io/cloud-builders/kubectl"
-  env:
-    - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
-    - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
-  args:
-    - "get"
-    - "nodes"
-
 - id: "Test kubectl with more commands"
   name: "gcr.io/cloud-builders/kubectl"
   env:
@@ -154,6 +145,11 @@ steps:
     kubectl port-forward -n ml-$SHORT_SHA-$_BUILD_ID-ray service/ray-cluster-kuberay-head-svc 8265:8265 &
     # Wait port-forwarding to take its place
     sleep 10s
+
+    apt update
+    apt install python3-venv --assume-yes
+    apt install python3-pip --assume-yes
+    pip install -U "ray[data,train,tune,serve]"
 
     ray job submit \
     --address=http://127.0.0.1:8265 -- python -c "import ray; ray.init(); print(ray.cluster_resources())"
