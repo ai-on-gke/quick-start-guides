@@ -203,7 +203,7 @@ steps:
 
     cd /workspace/common/modules/jupyter/tests
     python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
-
+    deactivate
 
     # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
 
@@ -241,7 +241,7 @@ steps:
     apt update
     apt install python3-venv --assume-yes
     apt install python3-pip --assume-yes
-    pip install pyyaml requests setuptools
+    pip install pyyaml requests packaging
 
     cd /workspace/common/modules/jupyter/tests
     python3 test_hub.py "127.0.0.1:9442" $_AUTOPILOT_CLUSTER
@@ -293,6 +293,7 @@ steps:
 
     cd /workspace/common/modules/jupyter/tests
     python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
+    deactivate
 
     # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
 
@@ -337,7 +338,7 @@ steps:
     apt install python3-venv --assume-yes
     apt install python3-pip --assume-yes
     pip install -U "ray[data,train,tune,serve]"
-    pip install pyyaml requests setuptools
+    pip install pyyaml requests packaging
 
     # Validate Ray: Check dashboard
     ray job submit --working-dir ./tests \
