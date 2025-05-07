@@ -79,23 +79,23 @@ steps:
 - id: 'Test env file 1'
   name: 'ubuntu'
   env:
-  - 'KUBECONFIG=/workspace/kubeconfig'
+  - 'TEST_PATH=/workspace/kubeconfig'
   - 'USE_GKE_GCLOUD_AUTH_PLUGIN=False'
   args:
   - '-c'
   - |
-    echo "test message" > $KUBECONFIG
+    echo "test message" > $TEST_PATH
   allowFailure: true
 
 - id: 'Test env file 2'
   name: 'ubuntu'
   env:
-  - 'KUBECONFIG=/workspace/kubeconfig'
+  - 'TEST_PATH=/workspace/kubeconfig'
   - 'USE_GKE_GCLOUD_AUTH_PLUGIN=False'
   args:
   - '-c'
   - |
-    echo $KUBECONFIG
+    echo $TEST_PATH
   allowFailure: true
   waitFor: ["Test env file 1"]
 
