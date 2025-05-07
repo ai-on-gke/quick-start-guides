@@ -78,7 +78,7 @@ steps:
   waitFor: ['create gke cluster']
 
 - id: 'Test kubectl'
-  name: 'hashicorp/terraform:latest'
+  name: 'ubuntu'
   env:
   - 'KUBECONFIG=/workspace/kubeconfig'
   - 'USE_GKE_GCLOUD_AUTH_PLUGIN=False'
