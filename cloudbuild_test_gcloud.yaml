@@ -77,9 +77,8 @@ steps:
 - name: "gcr.io/cloud-builders/kubectl"
   id: "Test kubectl"
   env:
-    - "CLOUDSDK_COMPUTE_REGION=${_CLUSTER_REGION}"
-    - "CLOUDSDK_COMPUTE_ZONE=${_CLUSTER_ZONE}"
-    - "CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}"
+    - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
+    - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
   args:
     - "get"
     - "nodes"
