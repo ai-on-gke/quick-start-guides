@@ -287,8 +287,8 @@ steps:
         py3-pip \
         py3-virtualenv
 
-    python3 -m venv venv
-    . venv/bin/activate
+    python3 -m venv venv_rag
+    . venv_rag/bin/activate
     pip install pyyaml requests
 
     cd /workspace/common/modules/jupyter/tests
@@ -314,6 +314,7 @@ steps:
     -var=jupyter_service_account=jupyter-sa-4-rag-$SHORT_SHA-$_BUILD_ID \
     -var=cloudsql_instance=pgvector-instance-$SHORT_SHA-$_BUILD_ID \
     -auto-approve -no-color
+    deactivate
     echo "pass" > /workspace/rag_tf_result.txt
 
 - id: 'test rag'
