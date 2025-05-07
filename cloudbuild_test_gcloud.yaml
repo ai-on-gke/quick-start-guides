@@ -60,17 +60,44 @@ steps:
   allowFailure: true
   waitFor: ['validate platform', validate rag]
 
-- id: 'test gcloud'
+- id: 'Generate Kubeconfig test gcloud'
   name: 'gcr.io/cloud-builders/gcloud'
+  env:
+  - 'KUBECONFIG=/workspace/kubeconfig'
+  - 'USE_GKE_GCLOUD_AUTH_PLUGIN=False'
+  args:
+  - 'container'
+  - 'clusters'
+  - 'get-credentials'
+  - 'ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster'
+  - '--region=${_REGION}'
+  - '--project=$PROJECT_ID'
+  allowFailure: true
+  waitFor: ['test rag']
+
+
+- id: 'Test env file 1'
+  name: 'ubuntu'
+  env:
+  - 'KUBECONFIG=/workspace/kubeconfig'
+  - 'USE_GKE_GCLOUD_AUTH_PLUGIN=False'
   args:
   - '-c'
   - |
-    gcloud storage buckets list --format=json
+    echo "test message" > $KUBECONFIG
+  allowFailure: true
 
-    # wget -O - https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
-    # echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-    # sudo apt update && sudo apt install terraform
-  timeout: '1200s'
+- id: 'Test env file 2'
+  name: 'ubuntu'
+  env:
+  - 'KUBECONFIG=/workspace/kubeconfig'
+  - 'USE_GKE_GCLOUD_AUTH_PLUGIN=False'
+  args:
+  - '-c'
+  - |
+    echo $KUBECONFIG
+  allowFailure: true
+  waitFor: ["Test env file 1"]
 
 - id: 'test rag'
   # name: 'gcr.io/$PROJECT_ID/terraform'
