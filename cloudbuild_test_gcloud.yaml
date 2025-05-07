@@ -216,9 +216,12 @@ steps:
     echo "pass" > /workspace/jupyterhub_tf_result.txt
 
 - id: 'test jupyterhub'
-  name: "hashicorp/terraform:latest"
+  name: "gcr.io/cloud-builders/kubectl"
   allowFailure: true
   waitFor: ['create jupyterhub']
+  env:
+  - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
+  - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
   entrypoint: 'sh'
   args:
   - '-c'
@@ -245,7 +248,7 @@ steps:
   - |
     set -e
 
-    cd /workspace/applications/jupyter/
+    cd /workspace/jupyter/
     terraform destroy \
     -var-file=workloads-without-iap.example.tfvars \
     -var=project_id=$PROJECT_ID \
