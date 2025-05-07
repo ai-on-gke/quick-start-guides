@@ -96,18 +96,59 @@ steps:
     - "get"
     - "nodes"
 
-- id: 'test ray cluster'
-  name: "hashicorp/terraform:latest"
-  allowFailure: true
-  waitFor: ['create gke cluster']
+- id: "Test kubectl with more commands"
+  name: "gcr.io/cloud-builders/kubectl"
+  env:
+    - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
+    - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
   entrypoint: 'sh'
   args:
   - '-c'
   - |
     set -e
-
-    cd /workspace/ray-on-gke/
     kubectl get nodes
+    kubectl get secrets
+
+# - id: 'test ray cluster'
+#   name: "hashicorp/terraform:latest"
+#   allowFailure: true
+#   waitFor: ['create gke cluster']
+#   entrypoint: 'sh'
+#   args:
+#   - '-c'
+#   - |
+#     set -e
+
+#     cd /workspace/ray-on-gke/
+
+#     terraform apply \
+#     -var-file=workloads.tfvars \
+#     -var=project_id=$PROJECT_ID \
+#     -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+#     -var=cluster_location=$_REGION \
+#     -var=kubernetes_namespace=ml-$SHORT_SHA-$_BUILD_ID-ray \
+#     -var=workload_identity_service_account=ray-sa-$SHORT_SHA-$_BUILD_ID \
+#     -var=gcs_bucket=gke-aieco-ray-$SHORT_SHA-$_BUILD_ID \
+#     -var=enable_gpu=true \
+#     -auto-approve -no-color
+#     echo "pass" > /workspace/user_result.txt
+
+# - id: "wait for the ray pods"
+#   name: "gcr.io/cloud-builders/kubectl"
+#   env:
+#     - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
+#     - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
+#   entrypoint: 'sh'
+#   args:
+#   - '-c'
+#   - |
+#     chmod +x /workspace/common/scripts/ci/wait_for_pods.sh
+#     /workspace/common/scripts/ci/wait_for_pods.sh ml-$SHORT_SHA-$_BUILD_ID-ray 3000
+
+
+
+
+
 
 # - id: 'test ray cluster'
 #   name: 'gcr.io/$PROJECT_ID/terraform'
