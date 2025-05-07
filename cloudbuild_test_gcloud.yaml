@@ -379,8 +379,10 @@ steps:
     echo "pass" > /workspace/rag_prompt_result.txt
 
 - id: 'cleanup rag'
-  name: 'gcr.io/$PROJECT_ID/terraform'
-  entrypoint: 'bash'
+  name: "hashicorp/terraform:latest"
+  allowFailure: true
+  waitFor: ['test rag']
+  entrypoint: 'sh'
   args:
   - '-c'
   - |
@@ -405,8 +407,6 @@ steps:
     -var=jupyter_service_account=jupyter-sa-$SHORT_SHA-$_BUILD_ID \
     -var=cloudsql_instance=pgvector-instance-$SHORT_SHA-$_BUILD_ID \
     -auto-approve -no-color
-  allowFailure: true
-  waitFor: ['test rag']
 
 # - id: 'test rag'
 #   name: 'gcr.io/$PROJECT_ID/terraform'
