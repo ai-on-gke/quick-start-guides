@@ -197,6 +197,10 @@ steps:
         py3-pip \
         py3-virtualenv
 
+    python3 -m venv venv
+    . venv/bin/activate
+    pip install pyyaml requests
+
     cd /workspace/common/modules/jupyter/tests
     python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
 
