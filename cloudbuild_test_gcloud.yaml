@@ -315,7 +315,6 @@ steps:
     -var=jupyter_service_account=jupyter-sa-4-rag-$SHORT_SHA-$_BUILD_ID \
     -var=cloudsql_instance=pgvector-instance-$SHORT_SHA-$_BUILD_ID \
     -auto-approve -no-color
-    deactivate
     echo "pass" > /workspace/rag_tf_result.txt
 
 - id: 'test rag'
@@ -393,8 +392,6 @@ steps:
 
     # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
     # -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
-
-    ml-373a855--7e5eca7e-false
 
     cd /workspace/rag/
     terraform destroy \
