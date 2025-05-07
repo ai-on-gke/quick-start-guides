@@ -62,9 +62,6 @@ steps:
 
 - id: 'Generate Kubeconfig test gcloud'
   name: 'gcr.io/cloud-builders/gcloud'
-  env:
-  - 'KUBECONFIG=/workspace/kubeconfig'
-  - 'USE_GKE_GCLOUD_AUTH_PLUGIN=False'
   args:
   - 'container'
   - 'clusters'
@@ -77,19 +74,11 @@ steps:
   allowFailure: true
   waitFor: ['create gke cluster']
 
-- id: 'Test kubectl'
-  name: 'ubuntu'
-  env:
-  - 'KUBECONFIG=/workspace/kubeconfig'
-  - 'USE_GKE_GCLOUD_AUTH_PLUGIN=False'
+- name: "gcr.io/cloud-builders/kubectl"
+  id: "Test kubectl"
   args:
-  - '-c'
-  - |
-    # set -e
-    echo $KUBECONFIG
-    kubectl get nodes
-  allowFailure: true
-  waitFor: ['Generate Kubeconfig test gcloud']
+    - "get"
+    - "nodes"
 
 - id: 'test rag'
   # name: 'gcr.io/$PROJECT_ID/terraform'
