@@ -46,7 +46,7 @@ locals {
       {
         source = "${path.module}/templates/gke-network-paramset.yaml.tftpl",
         template_vars = {
-          name            = "vpc${idx + 1}" 
+          name            = network_info.subnetwork
           network_name    = network_info.network
           subnetwork_name = network_info.subnetwork
           device_mode     = "NetDevice"
@@ -54,7 +54,7 @@ locals {
       },
       {
         source        = "${path.module}/templates/network-object.yaml.tftpl",
-        template_vars = { name = "vpc${idx + 1}" }
+        template_vars = { name = network_info.subnetwork }
       }
     ]
   ])

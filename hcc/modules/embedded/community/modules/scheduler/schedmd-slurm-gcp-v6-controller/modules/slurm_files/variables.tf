@@ -58,15 +58,19 @@ variable "slurm_cluster_name" {
   }
 }
 
-variable "enable_slurm_gcp_plugins" {
+variable "controller_state_disk" {
   description = <<EOD
-Enables calling hooks in scripts/slurm_gcp_plugins during cluster resume and suspend.
-EOD
-  type        = any
-  default     = false
-  validation {
-    condition     = !can(var.enable_slurm_gcp_plugins.max_hops)
-    error_message = "The 'max_hops' plugin is no longer supported. Please use the 'placement_max_distance' nodeset property instead."
+  A disk that will be attached to the controller instance template to save state of slurm. The disk is created and used by default.
+  To disable this feature, set this variable to null.
+  
+  NOTE: This will not save the contents at /opt/apps and /home. To preserve those, they must be saved externally.
+  EOD
+  type = object({
+    device_name = string
+  })
+
+  default = {
+    device_name = null
   }
 }
 
@@ -104,15 +108,6 @@ variable "cloudsql_secret" {
   default     = null
 }
 
-variable "login_startup_scripts" {
-  description = "List of scripts to be ran on login VM startup."
-  type = list(object({
-    filename = string
-    content  = string
-  }))
-  default = []
-}
-
 variable "login_startup_scripts_timeout" {
   description = <<EOD
 The timeout (seconds) applied to each script in login_startup_scripts. If
@@ -146,13 +141,13 @@ EOD
   default     = 300
 }
 
-variable "compute_startup_scripts" {
-  description = "List of scripts to be ran on compute VM startup."
-  type = list(object({
+variable "login_startup_scripts" {
+  description = "List of scripts to be ran on login VM startup in the specific group."
+  type = map(list(object({
     filename = string
     content  = string
-  }))
-  default = []
+  })))
+  default = {}
 }
 
 variable "nodeset_startup_scripts" {
@@ -174,6 +169,27 @@ NOTE: When set to 0, the timeout is considered infinite and thus disabled.
 EOD
   type        = number
   default     = 300
+}
+
+variable "enable_chs_gpu_health_check_prolog" {
+  description = <<EOD
+Enable a Cluster Health Sacnner(CHS) GPU health check that slurmd executes as a prolog script whenever it is asked to run a job step from a new job allocation. Compute nodes that fail GPU health check during prolog will be marked as drained. Find more details at:
+https://github.com/GoogleCloudPlatform/cluster-toolkit/tree/main/docs/CHS-Slurm.md
+EOD
+  type        = bool
+  default     = false
+  nullable    = false
+}
+
+variable "enable_chs_gpu_health_check_epilog" {
+  description = <<EOD
+Enable a Cluster Health Sacnner(CHS) GPU health check that slurmd executes as an epilog script after completing a job step from a new job allocation.
+Compute nodes that fail GPU health check during epilog will be marked as drained. Find more details at:
+https://github.com/GoogleCloudPlatform/cluster-toolkit/tree/main/docs/CHS-Slurm.md
+EOD
+  type        = bool
+  default     = false
+  nullable    = false
 }
 
 variable "prolog_scripts" {
@@ -460,4 +476,10 @@ variable "endpoint_versions" {
   default = {
     compute = null
   }
+}
+
+variable "controller_network_attachment" {
+  description = "SelfLink for NetworkAttachment to be attached to the controller, if any."
+  type        = string
+  default     = null
 }
