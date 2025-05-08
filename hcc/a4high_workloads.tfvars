@@ -16,7 +16,7 @@
 
 authorized_cidr = "0.0.0.0/0"
 
-goog_cm_deployment_name = "ultra-cluster-test"
+goog_cm_deployment_name = "a4high-cluster-test"
 
 labels = {
   created-by="gke-ai-quick-start-solutions"
@@ -26,16 +26,16 @@ labels = {
 project_id = "gke-aishared-gsc-dev"
 
 a3_mega_zone = ""
-a3_ultra_zone = "europe-west1-b"
-a4_high_zone = ""
+a3_ultra_zone = ""
+a4_high_zone = "us-central1-b"
 
-node_count_gke_nccl = 2
-node_count_gke = -1
+node_count_gke_nccl = -1
+node_count_gke = 0
 node_count_nemo = -1
 node_count_maxtext = -1
 node_count_llama_3_7b = -1
 
-# A3 Ultra recipe options:
+# recipe options:
 # - "gke"
 # - "gke-nccl"
 # - "llama3.1_7b_nemo_pretraining"
@@ -43,15 +43,16 @@ node_count_llama_3_7b = -1
 # - "llama3.1_70b_maxtext_pretraining"
 # - "mixtral8_7b_nemo_pretraining"
 # - "mixtral8_7b_maxtext_pretraining"
-a3ultra_recipe = "gke-nccl"
 a3mega_recipe=""
-a4high_recipe=""
+a3ultra_recipe = ""
+a4high_recipe = "gke-nccl"
 
-reservation = "nvidia-h200-b4nm5gd6nxkdw"
-reservation_block = ""
+reservation = "a4-exr-gke-aishared-gsc-dev"
+reservation_block = "a4-exr-gke-aishared-gsc-dev-block-0001"
 placement_policy_name = ""
 
-gpu_type = "A3 Ultra"
-a3_ultra_consumption_model = "Reservation"
+gpu_type = "A4 High"
+a3_ultra_consumption_model = ""
 a3_mega_consumption_model = ""
-a4_high_consumption_model = ""
+a4_high_consumption_model = "Reservation"
+

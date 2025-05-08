@@ -34,10 +34,16 @@ spec:
       - name: a3_ultra_zone
         varType: string
         defaultValue: ""
+      - name: a4_high_zone
+        varType: string
+        defaultValue: ""
       - name: a3_mega_consumption_model
         varType: string
         defaultValue: "Reservation"
       - name: a3_ultra_consumption_model
+        varType: string
+        defaultValue: "Reservation"
+      - name: a4_high_consumption_model
         varType: string
         defaultValue: "Reservation"
       - name: reservation
@@ -54,6 +60,9 @@ spec:
         varType: string
         defaultValue: ""
       - name: a3ultra_recipe
+        varType: string
+        defaultValue: ""
+      - name: a4high_recipe
         varType: string
         defaultValue: ""
       - name: node_count_gke
@@ -74,7 +83,7 @@ spec:
       - name: additional_labels
         description: Additional labels to add to Kubernetes resources.
         varType: string
-        defaultValue: "created-by=gke-ai-quick-start-solutions,ai.gke.io=ray"
+        defaultValue: "created-by=gke-ai-quick-start-solutions,gke_product_type=cluster-director-qss"
       - name: acknowledge
         varType: bool
         required: true
