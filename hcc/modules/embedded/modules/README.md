@@ -183,9 +183,9 @@ Pub/Sub subscription. Primarily used for [FSI - MonteCarlo Tutorial][fsi-monteca
   Kubernetes cluster using GKE.
 * **[pre-existing-gke-cluster]** ![core-badge] ![experimental-badge] : Retrieves an existing GKE cluster. Substitute for ([gke-cluster]) module.
 * **[schedmd-slurm-gcp-v6-controller]** ![core-badge] :
-  Creates a Slurm controller node using [slurm-gcp-version-6].
+  Creates a Slurm controller node.
 * **[schedmd-slurm-gcp-v6-login]** ![core-badge] :
-  Creates a Slurm login node using [slurm-gcp-version-6].
+  Creates a Slurm login node.
 * **[htcondor-setup]** ![community-badge] ![experimental-badge] : Creates the
   base infrastructure for an HTCondor pool (service accounts and Cloud Storage bucket).
 * **[htcondor-pool-secrets]** ![community-badge] ![experimental-badge] : Creates
@@ -208,7 +208,6 @@ Pub/Sub subscription. Primarily used for [FSI - MonteCarlo Tutorial][fsi-monteca
 [htcondor-access-point]: ../community/modules/scheduler/htcondor-access-point/README.md
 [schedmd-slurm-gcp-v6-controller]: ../community/modules/scheduler/schedmd-slurm-gcp-v6-controller/README.md
 [schedmd-slurm-gcp-v6-login]: ../community/modules/scheduler/schedmd-slurm-gcp-v6-login/README.md
-[slurm-gcp-version-6]: https://github.com/GoogleCloudPlatform/slurm-gcp/tree/6.8.6
 [pbspro-client]: ../community/modules/scheduler/pbspro-client/README.md
 [pbspro-server]: ../community/modules/scheduler/pbspro-server/README.md
 
@@ -261,15 +260,6 @@ Pub/Sub subscription. Primarily used for [FSI - MonteCarlo Tutorial][fsi-monteca
 [spack-setup]: ../community/modules/scripts/spack-setup/README.md
 [spack-execute]: ../community/modules/scripts/spack-execute/README.md
 [wait-for-startup]: ../community/modules/scripts/wait-for-startup/README.md
-
-> **_NOTE:_** Slurm-GCP V4 is deprecated. In case, you want to use V4 modules, please use
-[ghpc-v1.27.0](https://github.com/GoogleCloudPlatform/hpc-toolkit/releases/tag/v1.27.0)
-source code and build ghpc binary from this. This source code also contains
-deprecated examples using V4 modules for your reference.
-> **_NOTE:_** Slurm-GCP V5 is deprecated. In case, you want to use V5 modules, please use
-[ghpc-v1.44.1](https://github.com/GoogleCloudPlatform/hpc-toolkit/releases/tag/v1.44.1)
-source code and build ghpc binary from this. This source code also contains
-deprecated examples using V5 modules for your reference.
 
 ## Module Fields
 
