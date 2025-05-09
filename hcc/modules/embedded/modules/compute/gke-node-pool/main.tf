@@ -70,7 +70,9 @@ data "google_container_cluster" "gke_cluster" {
 resource "google_container_node_pool" "node_pool" {
   provider = google-beta
 
-  name           = coalesce(var.name, "${var.machine_type}-${local.module_unique_id}")
+  count = var.num_node_pools
+
+  name           = var.num_node_pools == 1 ? coalesce(var.name, join("-", [var.machine_type, local.module_unique_id])) : join("-", [coalesce(var.name, join("-", [var.machine_type, local.module_unique_id])), count.index])
   cluster        = var.cluster_id
   node_locations = var.zones
 
@@ -89,7 +91,7 @@ resource "google_container_node_pool" "node_pool" {
   max_pods_per_node = var.max_pods_per_node
 
   management {
-    auto_repair  = true
+    auto_repair  = var.auto_repair
     auto_upgrade = var.auto_upgrade
   }
 
@@ -100,10 +102,17 @@ resource "google_container_node_pool" "node_pool" {
   }
 
   dynamic "placement_policy" {
-    for_each = var.placement_policy.policy_type != "" ? [1] : []
+    for_each = var.placement_policy.type != null ? [1] : []
     content {
-      type        = var.placement_policy.policy_type
-      policy_name = var.placement_policy.policy_name
+      type        = var.placement_policy.type
+      policy_name = var.placement_policy.name
+    }
+  }
+
+  dynamic "queued_provisioning" {
+    for_each = var.enable_queued_provisioning ? [1] : []
+    content {
+      enabled = true
     }
   }
 
@@ -235,6 +244,8 @@ resource "google_container_node_pool" "node_pool" {
         subnetwork = additional_node_network_configs.value.subnetwork
       }
     }
+
+    enable_private_nodes = var.enable_private_nodes
   }
 
   timeouts {
@@ -322,12 +333,24 @@ resource "google_container_node_pool" "node_pool" {
       error_message = "At least one of max_unavailable or max_surge must greater than 0"
     }
     precondition {
-      condition     = var.placement_policy.policy_type != "COMPACT" || (var.zones != null ? (length(var.zones) == 1) : false)
+      condition     = var.placement_policy.type != "COMPACT" || (var.zones != null ? (length(var.zones) == 1) : false)
       error_message = "Compact placement is only available for node pools operating in a single zone."
     }
     precondition {
-      condition     = var.placement_policy.policy_type != "COMPACT" || local.upgrade_settings.strategy != "BLUE_GREEN"
+      condition     = var.placement_policy.type != "COMPACT" || local.upgrade_settings.strategy != "BLUE_GREEN"
       error_message = "Compact placement is not supported with blue-green upgrades."
+    }
+    precondition {
+      condition     = !(var.enable_queued_provisioning == true && var.placement_policy.type == "COMPACT")
+      error_message = "placement_policy cannot be COMPACT when enable_queued_provisioning is true."
+    }
+    precondition {
+      condition     = !(var.enable_queued_provisioning == true && var.reservation_affinity.consume_reservation_type != "NO_RESERVATION")
+      error_message = "reservation_affinity should be NO_RESERVATION when enable_queued_provisioning is true."
+    }
+    precondition {
+      condition     = !(var.enable_queued_provisioning == true && var.autoscaling_total_min_nodes != 0)
+      error_message = "autoscaling_total_min_nodes should be 0 when enable_queued_provisioning is true."
     }
   }
 }
@@ -354,9 +377,4 @@ module "kubectl_apply" {
       }
     ]
   ])
-
-  providers = {
-    kubectl = kubectl
-    http    = http
-  }
 }

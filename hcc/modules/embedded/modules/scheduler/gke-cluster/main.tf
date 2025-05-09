@@ -16,12 +16,7 @@
 
 locals {
   # This label allows for billing report tracking based on module.
-  labels = merge(var.labels, { 
-    ghpc_module = "gke-cluster", 
-    ghpc_role = "scheduler",
-    gke_product_type = "cluster-director-qss"
-    }
-  )
+  labels = merge(var.labels, { ghpc_module = "gke-cluster", ghpc_role = "scheduler" })
 }
 
 locals {
@@ -96,6 +91,13 @@ resource "google_container_cluster" "gke_cluster" {
   initial_node_count       = 1 # must be set when remove_default_node_pool is set
 
   deletion_protection = var.deletion_protection
+
+  dynamic "enable_k8s_beta_apis" {
+    for_each = var.enable_k8s_beta_apis != null ? [1] : []
+    content {
+      enabled_apis = var.enable_k8s_beta_apis
+    }
+  }
 
   network    = var.network_id
   subnetwork = var.subnetwork_self_link
@@ -194,6 +196,16 @@ resource "google_container_cluster" "gke_cluster" {
     }
   }
 
+  dynamic "dns_config" {
+    for_each = var.cloud_dns_config != null ? [1] : []
+    content {
+      additive_vpc_scope_dns_domain = var.cloud_dns_config.additive_vpc_scope_dns_domain
+      cluster_dns                   = var.cloud_dns_config.cluster_dns
+      cluster_dns_scope             = var.cloud_dns_config.cluster_dns_scope
+      cluster_dns_domain            = var.cloud_dns_config.cluster_dns_domain
+    }
+  }
+
   addons_config {
     gcp_filestore_csi_driver_config {
       enabled = var.enable_filestore_csi
@@ -209,6 +221,9 @@ resource "google_container_cluster" "gke_cluster" {
     }
     parallelstore_csi_driver_config {
       enabled = var.enable_parallelstore_csi
+    }
+    ray_operator_config {
+      enabled = var.enable_ray_operator
     }
   }
 
@@ -253,6 +268,30 @@ resource "google_container_cluster" "gke_cluster" {
 
   logging_config {
     enable_components = local.default_logging_component
+  }
+}
+
+resource "kubernetes_resource_quota" "gpu_operator_quota" {
+  count = var.enable_gpu_operator ? 1 : 0
+
+  metadata {
+    name      = "gpu-operator-quota"
+    namespace = "gpu-operator"
+  }
+  spec {
+    hard = {
+      pods = "100"
+    }
+    scope_selector {
+      match_expression {
+        scope_name = "PriorityClass"
+        operator   = "In"
+        values = [
+          "system-node-critical",
+          "system-cluster-critical",
+        ]
+      }
+    }
   }
 }
 
@@ -358,22 +397,44 @@ resource "google_container_node_pool" "system_node_pools" {
 
 data "google_client_config" "default" {}
 
+provider "kubernetes" {
+  host                   = "https://${google_container_cluster.gke_cluster.endpoint}"
+  cluster_ca_certificate = base64decode(google_container_cluster.gke_cluster.master_auth[0].cluster_ca_certificate)
+  token                  = data.google_client_config.default.access_token
+}
+
 module "workload_identity" {
   count   = var.configure_workload_identity_sa ? 1 : 0
   source  = "terraform-google-modules/kubernetes-engine/google//modules/workload-identity"
   version = "~> 34.0"
 
   use_existing_gcp_sa = true
-  name                = "workload-identity-k8-sa"
+  name                = var.k8s_service_account_name
   gcp_sa_name         = local.sa_email
   project_id          = var.project_id
-  roles               = var.enable_gcsfuse_csi ? ["roles/storage.admin"] : []
 
   # https://github.com/terraform-google-modules/terraform-google-kubernetes-engine/issues/1059
   depends_on = [
     data.google_project.project,
     google_container_cluster.gke_cluster
   ]
+}
+
+locals {
+  k8s_service_account_name = one(module.workload_identity[*].k8s_service_account_name)
+}
+
+locals {
+  # Separate gvnic and rdma networks and assign indexes
+  gvnic_networks = [for idx, net in [for n in var.additional_networks : n if strcontains(upper(n.nic_type), "GVNIC")] :
+    merge(net, { name = "${var.k8s_network_names.gvnic_prefix}${idx + var.k8s_network_names.gvnic_start_index}${var.k8s_network_names.gvnic_postfix}" })
+  ]
+
+  rdma_networks = [for idx, net in [for n in var.additional_networks : n if strcontains(upper(n.nic_type), "RDMA")] :
+    merge(net, { name = "${var.k8s_network_names.rdma_prefix}${idx + var.k8s_network_names.rdma_start_index}${var.k8s_network_names.rdma_postfix}" })
+  ]
+
+  all_networks = concat(local.gvnic_networks, local.rdma_networks)
 }
 
 module "kubectl_apply" {
@@ -383,11 +444,11 @@ module "kubectl_apply" {
   project_id = var.project_id
 
   apply_manifests = flatten([
-    for idx, network_info in var.additional_networks : [
+    for idx, network_info in local.all_networks : [
       {
         source = "${path.module}/templates/gke-network-paramset.yaml.tftpl",
         template_vars = {
-          name            = "vpc${idx + 1}",
+          name            = network_info.name,
           network_name    = network_info.network
           subnetwork_name = network_info.subnetwork,
           device_mode     = strcontains(upper(network_info.nic_type), "RDMA") ? "RDMA" : "NetDevice"
@@ -395,13 +456,8 @@ module "kubectl_apply" {
       },
       {
         source        = "${path.module}/templates/network-object.yaml.tftpl",
-        template_vars = { name = "vpc${idx + 1}" }
+        template_vars = { name = network_info.name }
       }
     ]
   ])
-
-  providers = {
-    kubectl = kubectl
-    http    = http
-  }
 }
