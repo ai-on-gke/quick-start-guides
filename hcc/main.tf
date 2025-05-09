@@ -22,6 +22,10 @@ data "google_project" "project" {
 locals {
   subnetwork_name = "${var.goog_cm_deployment_name}-gke-net"
   result_bucket_name = "${var.project_id}-${var.goog_cm_deployment_name}-result"
+  labels = {
+    created-by="gke-ai-quick-start-solutions"
+    gke_product_type="cluster-director-qss"
+  }
 }
 
 module "gke-a3-mega-net" {
@@ -71,7 +75,7 @@ module "gke-a3-ultra-net-0" {
     name   = "${var.goog_cm_deployment_name}-internal-0"
     ranges = ["192.168.0.0/16"]
   }]
-  labels       = var.labels
+  labels       = local.labels
   network_name = "${var.goog_cm_deployment_name}-net-0"
   project_id   = var.project_id
   region       = local.region
@@ -109,7 +113,7 @@ module "gke-a3-ultra-net-1" {
     name   = "${var.goog_cm_deployment_name}-internal-1"
     ranges = ["192.168.0.0/16"]
   }]
-  labels       = var.labels
+  labels       = local.labels
   mtu          = 8896
   network_name = "${var.goog_cm_deployment_name}-net-1"
   project_id   = var.project_id
@@ -156,7 +160,7 @@ module "gke-a4-net-0" {
     name   = "${var.goog_cm_deployment_name}-internal-0"
     ranges = ["192.168.0.0/16"]
   }]
-  labels       = var.labels
+  labels       = local.labels
   network_name = "${var.goog_cm_deployment_name}-net-0"
   project_id   = var.project_id
   region       = local.region
@@ -194,7 +198,7 @@ module "gke-a4-net-1" {
     name   = "${var.goog_cm_deployment_name}-internal-1"
     ranges = ["192.168.0.0/16"]
   }]
-  labels       = var.labels
+  labels       = local.labels
   network_name = "${var.goog_cm_deployment_name}-net-1"
   project_id   = var.project_id
   region       = local.region
@@ -353,7 +357,7 @@ module "gke-cluster" {
   enable_dcgm_monitoring  = true
   enable_gcsfuse_csi      = true
   enable_private_endpoint = false
-  labels                  = var.labels
+  labels                  = local.labels
   master_authorized_networks = [{
     cidr_block   = var.authorized_cidr
     display_name = "kubectl-access-network"
@@ -383,7 +387,7 @@ module "gke-gpu-nodepool" {
   auto_upgrade        = true
   cluster_id          = module.gke-cluster.cluster_id
   gke_version         = module.gke-cluster.gke_version
-  labels              = var.labels
+  labels              = local.labels
   project_id          = var.project_id
   static_node_count   = local.node_count
   zones               = [local.zone]
