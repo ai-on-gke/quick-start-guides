@@ -80,10 +80,6 @@ spec:
       - name: node_count_maxtext
         varType: number
         defaultValue: -1
-      - name: additional_labels
-        description: Additional labels to add to Kubernetes resources.
-        varType: string
-        defaultValue: "created-by=gke-ai-quick-start-solutions,gke_product_type=cluster-director-qss"
       - name: acknowledge
         varType: bool
         required: true
