@@ -54,7 +54,7 @@ module "project-services" {
     "pubsub.googleapis.com",
     "servicenetworking.googleapis.com",
     "serviceusage.googleapis.com",
-    "sourcerepo.googleapis.com",
+    # "sourcerepo.googleapis.com", # deprecated
     "sqladmin.googleapis.com",
     "iap.googleapis.com"
   ])
@@ -318,4 +318,3 @@ resource "helm_release" "gmp-apps" {
     "${file("${path.module}/podmonitoring.yaml")}"
   ]
 }
-
