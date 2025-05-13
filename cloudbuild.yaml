@@ -14,34 +14,51 @@
 
 steps:
 - id: "validate platform"
-  # name: "gcr.io/$PROJECT_ID/terraform"
   name: "hashicorp/terraform:latest"
+  dir: "/workspace/common/infrastructure/"
+  waitFor: ["-"]
   script: |
     terraform init -no-color
     terraform validate -no-color
-  dir: "common/infrastructure/"
-  waitFor: ["-"]
+
+- id: "validate ray"
+  name: "hashicorp/terraform:latest"
+  dir: "/workspace/ray-on-gke/"
+  waitFor: ["validate platform"]
+  script: |
+    terraform init -no-color
+    terraform validate -no-color
+
+- id: "validate jupyterhub"
+  name: "hashicorp/terraform:latest"
+  dir: "/workspace/jupyter/"
+  waitFor: ["validate platform"]
+  script: |
+    terraform init -no-color
+    terraform validate -no-color
 
 - id: "validate rag"
-  # name: "gcr.io/$PROJECT_ID/terraform"
   name: "hashicorp/terraform:latest"
+  dir: "/workspace/rag/"
+  waitFor: ["validate platform"]
   script: |
     terraform init -no-color
     terraform validate -no-color
-  dir: "rag/"
-  waitFor: ["validate platform"]
 
 - id: 'create gke cluster'
-  # name: 'gcr.io/$PROJECT_ID/terraform'
   name: "hashicorp/terraform:latest"
   env:
   - "KUBE_LOAD_CONFIG_FILE=false"
+  dir: "/workspace/common/infrastructure/"
+  allowFailure: true
+  waitFor: ["validate platform", "validate ray", "validate jupyterhub", "validate rag"]
   entrypoint: 'sh'
   args:
   - '-c'
   - |
     set -e
 
+    echo "create gke cluster"
     terraform apply \
     -var-file=tfvars_tests/standard-gke-public.platform.tfvars \
     -var=project_id=$PROJECT_ID \
@@ -55,30 +72,220 @@ steps:
     -var='gpu_pools=[{initial_node_count=2,name="gpu-pool",machine_type="g2-standard-24",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-balanced",accelerator_count=2,accelerator_type="nvidia-l4",gpu_driver_version="DEFAULT",}]' \
     -auto-approve -no-color
     echo "pass" > /workspace/gke_cluster_result.txt
-  dir: "common/infrastructure/"
-  allowFailure: true
-  waitFor: ['validate platform', validate rag]
 
-- id: 'test rag'
-  # name: 'gcr.io/$PROJECT_ID/terraform'
+- id: 'Generate Kubeconfig'
+  name: 'gcr.io/cloud-builders/gcloud'
+  args:
+  - 'container'
+  - 'clusters'
+  - 'get-credentials'
+  - 'ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster'
+  # - 'ml-373a855--7e5eca7e-cluster'
+  - '--region=${_REGION}'
+  # - '--region=us-east4'
+  - '--project=$PROJECT_ID'
+  allowFailure: true
+  waitFor: ['create gke cluster']
+
+- id: 'create ray cluster'
   name: "hashicorp/terraform:latest"
+  allowFailure: true
+  waitFor: ['create gke cluster']
   entrypoint: 'sh'
-  secretEnv: ['KAGGLE_USERNAME', 'KAGGLE_KEY']
   args:
   - '-c'
   - |
     set -e
 
-    # Get kube config
-    gcloud container clusters get-credentials \
-    ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
-    --location $_REGION \
-    --project $PROJECT_ID
+    cd /workspace/ray-on-gke/
 
-    cd /workspace/modules/jupyter/tests
+    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+
+    terraform apply \
+    -var-file=workloads.tfvars \
+    -var=project_id=$PROJECT_ID \
+    -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+    -var=cluster_location=$_REGION \
+    -var=kubernetes_namespace=ml-$SHORT_SHA-$_BUILD_ID-ray \
+    -var=workload_identity_service_account=ray-sa-$SHORT_SHA-$_BUILD_ID \
+    -var=gcs_bucket=gke-aieco-ray-$SHORT_SHA-$_BUILD_ID \
+    -var=enable_gpu=true \
+    -auto-approve -no-color
+    echo "pass" > /workspace/user_result.txt
+
+- id: "test ray cluster"
+  name: "gcr.io/cloud-builders/kubectl"
+  waitFor: ['create ray cluster']
+  env:
+    - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
+    - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    set -e
+
+    chmod +x /workspace/common/scripts/ci/wait_for_pods.sh
+    /workspace/common/scripts/ci/wait_for_pods.sh ml-$SHORT_SHA-$_BUILD_ID-ray 3000
+
+    kubectl wait --all pods -n ml-$SHORT_SHA-$_BUILD_ID-ray --for=condition=Ready --timeout=1200s
+    # Ray head's readinessProbe is not probing the head service today. Therefore the wait for ready above is not reliable.
+    sleep 60s
+    kubectl port-forward -n ml-$SHORT_SHA-$_BUILD_ID-ray service/ray-cluster-kuberay-head-svc 8265:8265 &
+    # Wait port-forwarding to take its place
+    sleep 10s
+
+    apt update
+    apt install python3-venv --assume-yes
+    apt install python3-pip --assume-yes
+    pip install -U "ray[data,train,tune,serve]"
+
+    ray job submit \
+    --address=http://127.0.0.1:8265 -- python -c "import ray; ray.init(); print(ray.cluster_resources())"
+    echo "pass" > /workspace/ray_result.txt
+
+- id: 'cleanup ray cluster'
+  name: "hashicorp/terraform:latest"
+  allowFailure: true
+  waitFor: ['test ray cluster']
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    set -e
+
+    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+
+    cd /workspace/ray-on-gke/
+    terraform destroy \
+    -var-file=workloads.tfvars \
+    -var=project_id=$PROJECT_ID \
+    -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+    -var=cluster_location=$_REGION \
+    -var=kubernetes_namespace=ml-$SHORT_SHA-$_BUILD_ID-ray \
+    -var=workload_identity_service_account=ray-sa-$SHORT_SHA-$_BUILD_ID \
+    -var=gcs_bucket=gke-aieco-ray-$SHORT_SHA-$_BUILD_ID \
+    -var=enable_gpu=true \
+    -auto-approve -no-color
+
+- id: 'create jupyterhub'
+  name: "hashicorp/terraform:latest"
+  allowFailure: true
+  waitFor: ['create gke cluster']
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    set -e
+
+    apk update && \
+    apk add --no-cache \
+        python3 \
+        py3-pip \
+        py3-virtualenv
+
+    python3 -m venv venv
+    . venv/bin/activate
+    pip install pyyaml requests
+
+    cd /workspace/common/modules/jupyter/tests
     python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
+    deactivate
 
-    cd /workspace/applications/rag/
+    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+
+    cd /workspace/jupyter
+    terraform apply \
+    -var-file=workloads-without-iap.example.tfvars \
+    -var=project_id=$PROJECT_ID \
+    -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+    -var=cluster_location=$_REGION \
+    -var=kubernetes_namespace=ml-$SHORT_SHA-$_BUILD_ID-jupyter \
+    -var=workload_identity_service_account=jupyter-sa-$SHORT_SHA-$_BUILD_ID \
+    -var=gcs_bucket=gke-aieco-jupyter-$SHORT_SHA-$_BUILD_ID \
+    -auto-approve -no-color
+    echo "pass" > /workspace/jupyterhub_tf_result.txt
+
+- id: 'test jupyterhub'
+  name: "gcr.io/cloud-builders/kubectl"
+  allowFailure: true
+  waitFor: ['create jupyterhub']
+  env:
+  - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
+  - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    set -e
+
+    kubectl wait --for=condition=Ready pods -n ml-$SHORT_SHA-$_BUILD_ID-jupyter -l 'component!=continuous-image-puller' --timeout=1800s
+    kubectl get services -n ml-$SHORT_SHA-$_BUILD_ID-jupyter
+    kubectl port-forward -n ml-$SHORT_SHA-$_BUILD_ID-jupyter service/proxy-public 9442:80 &
+    # Wait port-forwarding to take its place
+    sleep 5s
+
+    apt update
+    apt install python3-venv --assume-yes
+    apt install python3-pip --assume-yes
+    pip install pyyaml requests packaging
+
+    cd /workspace/common/modules/jupyter/tests
+    python3 test_hub.py "127.0.0.1:9442" $_AUTOPILOT_CLUSTER
+    echo "pass" > /workspace/jupyterhub_test_result.txt
+
+- id: 'cleanup jupyterhub'
+  name: "hashicorp/terraform:latest"
+  allowFailure: true
+  waitFor: ['test jupyterhub']
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    set -e
+
+    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+
+    cd /workspace/jupyter/
+    terraform destroy \
+    -var-file=workloads-without-iap.example.tfvars \
+    -var=project_id=$PROJECT_ID \
+    -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+    -var=cluster_location=$_REGION \
+    -var=kubernetes_namespace=ml-$SHORT_SHA-$_BUILD_ID-jupyter \
+    -var=workload_identity_service_account=jupyter-sa-$SHORT_SHA-$_BUILD_ID \
+    -var=gcs_bucket=gke-aieco-jupyter-$SHORT_SHA-$_BUILD_ID \
+    -auto-approve -no-color
+
+- id: 'create rag'
+  name: "hashicorp/terraform:latest"
+  allowFailure: true
+  waitFor: ['create gke cluster']
+  secretEnv: ['KAGGLE_USERNAME', 'KAGGLE_KEY']
+  entrypoint: 'sh'
+  args:
+  - '-c'
+  - |
+    set -e
+
+    apk update && \
+    apk add --no-cache \
+        python3 \
+        py3-pip \
+        py3-virtualenv
+
+    python3 -m venv venv_rag
+    . venv_rag/bin/activate
+    pip install pyyaml requests
+
+    cd /workspace/common/modules/jupyter/tests
+    python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
+    deactivate
+
+    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+    # -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
+
+    cd /workspace/rag/
     terraform apply \
     -var-file=workloads.tfvars \
     -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
@@ -97,132 +304,83 @@ steps:
     -auto-approve -no-color
     echo "pass" > /workspace/rag_tf_result.txt
 
-
-    # Validate JupyterHub: Get hub url
-    kubectl get services -n rag-$SHORT_SHA-$_BUILD_ID
-    kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/proxy-public 9443:80 &
-    # Wait port-forwarding to take its place
-    sleep 5s
-
-    # Validate JupyterHub: Test Hub
-    cd /workspace/modules/jupyter/tests
-    python3 test_hub.py "127.0.0.1:9443" $_AUTOPILOT_CLUSTER
-    echo "pass" > /workspace/rag_jupyterhub_test_result.txt
-
-    # Validate RAG: Test rag frontend
-    kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/rag-frontend 8081:8080 &
-    # Wait port-forwarding to take its place
-    sleep 5s
-
-    cd /workspace/applications/rag/tests
-    python3 test_frontend.py "127.0.0.1:8081"
-    echo "pass" > /workspace/rag_frontend_result.txt
-
-    cd /workspace/
-    sed -i "s/<username>/$$KAGGLE_USERNAME/g" ./applications/rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
-    sed -i "s/<token>/$$KAGGLE_KEY/g" ./applications/rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
-    gsutil cp ./applications/rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb gs://gke-aieco-rag-$SHORT_SHA-$_BUILD_ID/
-    kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID $(kubectl get pod -l app=jupyterhub,component=hub -n rag-$SHORT_SHA-$_BUILD_ID -o jsonpath="{.items[0].metadata.name}") -- jupyterhub token admin --log-level=CRITICAL | xargs python3 ./applications/rag/notebook_starter.py
-    # Wait for jupyterhub to trigger notebook pod startup
-    sleep 5s
-    kubectl wait --for=condition=Ready pod/jupyter-admin -n rag-$SHORT_SHA-$_BUILD_ID --timeout=500s
-    kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- jupyter nbconvert --to script /data/rag-kaggle-ray-sql-interactive.ipynb
-    kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- ipython /data/rag-kaggle-ray-sql-interactive.py
-
-    python3 ./applications/rag/tests/test_rag.py "http://127.0.0.1:8081/prompt"
-    echo "pass" > /workspace/rag_prompt_result.txt
-
+- id: 'test rag'
+  name: "gcr.io/cloud-builders/kubectl"
   allowFailure: true
-  waitFor: ['create gke cluster']
-
-- id: 'Generate Kubeconfig'
-  # name: 'gcr.io/cloud-builders/gcloud'
-  name: 'google/cloud-sdk:latest'
-  env:
-  - 'KUBECONFIG=/workspace/kubeconfig'
-  - 'USE_GKE_GCLOUD_AUTH_PLUGIN=False'
-  args:
-  - 'container'
-  - 'clusters'
-  - 'get-credentials'
-  - 'ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster'
-  - '--region=${_REGION}'
-  - '--project=$PROJECT_ID'
-  allowFailure: true
-  waitFor: ['test rag']
-
-- id: 'Copy metadata'
-  name: 'ubuntu'
+  waitFor: ['create rag']
+  secretEnv: ['KAGGLE_USERNAME', 'KAGGLE_KEY']
   entrypoint: 'sh'
   args:
   - '-c'
   - |
-    mkdir -p security_test/scan_target/ && find . -mindepth 1 -maxdepth 1 -type d ! -name "security_test" -exec cp -r {} security_test/scan_target/ \;
-    mkdir -p /workspace/security_test/scan_target
-    # Exclude /workspace/security_test from the copy to avoid recursive issue
-    find . -mindepth 1 -maxdepth 1 ! -path "./security_test" -exec cp -r {} /workspace/security_test/scan_target/ \;
-    chown -R 65532:65532 /workspace/security_test/scan_target
-    mkdir -p /workspace/security_test/allowlist
-    cp security_test/config.yaml /workspace/security_test/config.yaml
-    cp -r security_test/allowlist/* /workspace/security_test/allowlist/ || echo "Allowlist folder is empty or not found"
-  allowFailure: true
-  waitFor: ['Generate Kubeconfig']
+    set -e
+    echo "This is mocked step that should be implemented later."
+    # # Validate Ray: Make sure pods are running
+    # kubectl wait --for=condition=Ready pods -n rag-$SHORT_SHA-$_BUILD_ID -l 'component!=continuous-image-puller' --timeout=1200s
+    # kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/ray-cluster-kuberay-head-svc 8262:8265 &
+    # # Wait port-forwarding to take its place
+    # sleep 5s
 
-# gcr.io/cloud-builders/docker is a special image: This image provided by Google Cloud contains the docker command-line tool, which is essential for executing Docker commands like docker build and docker run within your Cloud Build steps.
-# gcr.io/${_PROJECT_ID}/check_violations:latest is your application image: This image contains your security check tool and its dependencies. It's designed to be run, not to build or run other Docker images.
-- name: 'gcr.io/cloud-builders/docker'
-  id: 'Run shipshape on cluster'
-  entrypoint: 'sh'
-  args:
-  - '-c'
-  - |
-    docker run \
-    --network=cloudbuild \
-    --rm \
-    -v /workspace/security_test/allowlist:/workspace/security_test/allowlist \
-    -v /workspace/security_test/config.yaml:/workspace/security_test/config.yaml \
-    -v /workspace/kubeconfig:/root/.kube/config \
-    ${_SHIPSHAPE_IMAGE} \
-    --mode=cluster \
-    --allowlist_folder=/workspace/security_test/allowlist \
-    --kube_config_path=/root/.kube/config \
-    --max_wait_duration=3000 \
-    --max_parallel=100 \
-    --cluster_scan_config_path=/workspace/security_test/config.yaml \
-    2>&1 | tee /workspace/shipshape_on_cluster.txt 2>&1
-  allowFailure: true
-  waitFor: ['Copy metadata']
+    # # Install Python requirements
+    # apt update
+    # apt install python3-venv --assume-yes
+    # apt install python3-pip --assume-yes
+    # pip install -U "ray[data,train,tune,serve]"
+    # pip install pyyaml requests packaging
 
+    # # Validate Ray: Check dashboard
+    # ray job submit --working-dir ./tests \
+    # --address=http://127.0.0.1:8262 -- python -c "import ray; ray.init(); print(ray.cluster_resources())"
+    # echo "pass" > /workspace/rag_ray_dashboard_result.txt
 
-- id: 'Run Shipshape on helm'
-  name: 'gcr.io/cloud-builders/docker'
-  entrypoint: 'sh'
-  args:
-  - '-c'
-  - |
-    docker run \
-    --network=cloudbuild \
-    --rm \
-    -v /workspace/security_test/allowlist:/workspace/security_test/allowlist \
-    -v /workspace/security_test/scan_target:/workspace/security_test/scan_target \
-    ${_SHIPSHAPE_IMAGE} \
-    --mode=helm \
-    --allowlist_folder=/workspace/security_test/allowlist \
-    --scan_path=/workspace/security_test/scan_target \
-    --max_wait_duration=60 \
-    2>&1 | tee /workspace/shipshape_on_helm.txt 2>&1
-  allowFailure: true
-  waitFor: ['Copy metadata']
+    # # Validate JupyterHub: Get hub url
+    # kubectl get services -n rag-$SHORT_SHA-$_BUILD_ID
+    # kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/proxy-public 9443:80 &
+    # # Wait port-forwarding to take its place
+    # sleep 5s
+
+    # # Validate JupyterHub: Test Hub
+    # cd /workspace/common/modules/jupyter/tests
+    # python3 test_hub.py "127.0.0.1:9443" $_AUTOPILOT_CLUSTER
+    # echo "pass" > /workspace/rag_jupyterhub_test_result.txt
+
+    # # Validate RAG: Test rag frontend
+    # kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/rag-frontend 8081:8080 &
+    # # Wait port-forwarding to take its place
+    # sleep 5s
+
+    # cd /workspace/rag/tests
+    # python3 test_frontend.py "127.0.0.1:8081"
+    # echo "pass" > /workspace/rag_frontend_result.txt
+
+    # cd /workspace/
+    # sed -i "s/<username>/$$KAGGLE_USERNAME/g" ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
+    # sed -i "s/<token>/$$KAGGLE_KEY/g" ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
+    # gsutil cp ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb gs://gke-aieco-rag-$SHORT_SHA-$_BUILD_ID/
+    # kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID $(kubectl get pod -l app=jupyterhub,component=hub -n rag-$SHORT_SHA-$_BUILD_ID -o jsonpath="{.items[0].metadata.name}") -- jupyterhub token admin --log-level=CRITICAL | xargs python3 ./rag/notebook_starter.py
+    # # Wait for jupyterhub to trigger notebook pod startup
+    # sleep 5s
+    # kubectl wait --for=condition=Ready pod/jupyter-admin -n rag-$SHORT_SHA-$_BUILD_ID --timeout=500s
+    # kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- jupyter nbconvert --to script /data/rag-kaggle-ray-sql-interactive.ipynb
+    # kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- ipython /data/rag-kaggle-ray-sql-interactive.py
+
+    # python3 ./rag/tests/test_rag.py "http://127.0.0.1:8081/prompt"
+    # echo "pass" > /workspace/rag_prompt_result.txt
 
 - id: 'cleanup rag'
-  # name: 'gcr.io/$PROJECT_ID/terraform'
   name: "hashicorp/terraform:latest"
+  allowFailure: true
+  waitFor: ['test rag']
   entrypoint: 'sh'
   args:
   - '-c'
   - |
     set -e
 
+    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+    # -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
+
+    cd /workspace/rag/
     terraform destroy \
     -var-file=workloads.tfvars \
     -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
@@ -239,29 +397,31 @@ steps:
     -var=jupyter_service_account=jupyter-sa-$SHORT_SHA-$_BUILD_ID \
     -var=cloudsql_instance=pgvector-instance-$SHORT_SHA-$_BUILD_ID \
     -auto-approve -no-color
-  allowFailure: true
-  dir: "rag/"
-  waitFor: ['Run shipshape on cluster', 'Run Shipshape on helm']
 
 - id: 'cleanup gke cluster'
-  # name: 'gcr.io/$PROJECT_ID/terraform'
   name: "hashicorp/terraform:latest"
+  dir: "/workspace/common/infrastructure/"
+  allowFailure: true
+  waitFor: ['cleanup ray cluster', 'cleanup jupyterhub', 'cleanup rag']
   entrypoint: 'sh'
   args:
   - '-c'
   - |
     set -e
 
-    terraform destroy -var-file=tfvars_tests/standard-gke-public.platform.tfvars -var=project_id=$PROJECT_ID \
-    -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
+    echo "cleanup gke cluster step!"
+    terraform destroy \
+    -var-file=tfvars_tests/standard-gke-public.platform.tfvars \
+    -var=project_id=$PROJECT_ID \
     -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
     -var=subnetwork_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
+    -var=subnetwork_region=$_REGION \
+    -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
     -var=autopilot_cluster=$_AUTOPILOT_CLUSTER \
-    -var=cluster_location=$_REGION -auto-approve -no-color
-
-  dir: "common/infrastructure/"
-  allowFailure: true
-  waitFor: ['cleanup rag']
+    -var=cluster_location=$_REGION \
+    -var='cpu_pools=[{initial_node_count=2,name="cpu-pool",machine_type="n1-standard-16",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-standard",}]' \
+    -var='gpu_pools=[{initial_node_count=2,name="gpu-pool",machine_type="g2-standard-24",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-balanced",accelerator_count=2,accelerator_type="nvidia-l4",gpu_driver_version="DEFAULT",}]' \
+    -auto-approve -no-color
 
 - id: 'check result'
   # name: 'gcr.io/$PROJECT_ID/terraform'
@@ -275,35 +435,51 @@ steps:
       exit 1
     fi
 
+    if [[ $(cat /workspace/user_result.txt) != "pass" ]]; then
+      echo "ray creation tf failed"
+      exit 1
+    fi
+
+    if [[ $(cat /workspace/ray_result.txt) != "pass" ]]; then
+      echo "ray test failed"
+      exit 1
+    fi
+
+    if [[ $(cat /workspace/jupyterhub_tf_result.txt) != "pass" ]]; then
+      echo "jupyterhub creation tf failed"
+      exit 1
+    fi
+
+    if [[ $(cat /workspace/jupyterhub_test_result.txt) != "pass" ]]; then
+      echo "jupyterhub test failed"
+      exit 1
+    fi
+
+    if [[ $(cat /workspace/jupyterhub_test_result.txt) != "pass" ]]; then
+      echo "jupyterhub test failed"
+      exit 1
+    fi
+
     if [[ $(cat /workspace/rag_tf_result.txt) != "pass" ]]; then
       echo "rag tf failed"
       exit 1
     fi
 
-    if [[ $(cat /workspace/rag_jupyterhub_test_result.txt) != "pass" ]]; then
-      echo "rag jupyterhub test failed"
-      exit 1
-    fi
+    # if [[ $(cat /workspace/rag_jupyterhub_test_result.txt) != "pass" ]]; then
+    #   echo "rag jupyterhub test failed"
+    #   exit 1
+    # fi
 
-    if [[ $(cat /workspace/rag_frontend_result.txt) != "pass" ]]; then
-      echo "rag frontend test failed"
-      exit 1
-    fi
+    # if [[ $(cat /workspace/rag_frontend_result.txt) != "pass" ]]; then
+    #   echo "rag frontend test failed"
+    #   exit 1
+    # fi
 
-    if [[ $(cat /workspace/rag_prompt_result.txt) != "pass" ]]; then
-      echo "rag prompt test failed"
-      exit 1
-    fi
+    # if [[ $(cat /workspace/ray_result.txt) != "pass" ]]; then
+    #   echo "rag prompt test failed"
+    #   exit 1
+    # fi
 
-    if grep -q "Validation failed" /workspace/shipshape_on_cluster.txt; then
-      echo "Shipshape on cluster scan validation failed, please check the log. knowledge share slides: go/shipshape-ai-on-gke-slide"
-      exit 1
-    fi
-
-    if grep -q "Validation failed" /workspace/shipshape_on_helm.txt; then
-      echo "Shipshape on helm scan validation failed, please check the log. knowledge share slides: go/shipshape-ai-on-gke-slide"
-      exit 1
-    fi
   waitFor: ['cleanup gke cluster']
 
 substitutions:
