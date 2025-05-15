@@ -154,6 +154,12 @@ variable "static_node_count" {
   default     = null
 }
 
+variable "auto_repair" {
+  description = "Whether the nodes will be automatically repaired."
+  type        = bool
+  default     = true
+}
+
 variable "auto_upgrade" {
   description = "Whether the nodes will be automatically upgraded."
   type        = bool
@@ -214,15 +220,16 @@ variable "placement_policy" {
   EOT
 
   type = object({
-    policy_type = string
-    policy_name = optional(string)
+    type = string
+    name = optional(string)
   })
   default = {
-    policy_type = ""
+    type = null
+    name = null
   }
   validation {
-    condition     = var.placement_policy.policy_type == "" || try(contains(["COMPACT"], var.placement_policy.policy_type), false)
-    error_message = "`COMPACT` is the only supported value for `placement_policy.policy_type`."
+    condition     = var.placement_policy.type == null || try(contains(["COMPACT"], var.placement_policy.type), false)
+    error_message = "`COMPACT` is the only supported value for `placement_policy.type`."
   }
 }
 
@@ -413,4 +420,22 @@ variable "run_workload_script" {
   description = "Whether execute the script to create a sample workload and inject rxdm sidecar into workload. Currently, implemented for A3-Highgpu and A3-Megagpu only."
   type        = bool
   default     = true
+}
+
+variable "enable_queued_provisioning" {
+  description = "If true, enables Dynamic Workload Scheduler and adds the cloud.google.com/gke-queued taint to the node pool."
+  type        = bool
+  default     = false
+}
+
+variable "enable_private_nodes" {
+  description = "Whether nodes have internal IP addresses only."
+  type        = bool
+  default     = false
+}
+
+variable "num_node_pools" {
+  description = "Number of node pools to create. For TPUs, this is the number of slices."
+  type        = number
+  default     = 1
 }
