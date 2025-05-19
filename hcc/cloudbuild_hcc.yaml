@@ -18,7 +18,7 @@ steps:
     script: |
       terraform init -no-color
       terraform validate -no-color
-    dir: "applications/hcc/"
+    dir: "hcc/"
     waitFor: ["-"]
   
   - id: 'create a3m with nccl'
@@ -186,7 +186,7 @@ steps:
       -var=gpu_type="A3 Mega" \
       -var=node_count_llama_3_7b=2 \
       -var=goog_cm_deployment_name="cloudbuild-a3m-nemo" \
-      -var=a3_ultra_zone=$_A3MEGA_ZONE \
+      -var=a3_mega_zone=$_A3MEGA_ZONE \
       -var=reservation=$_A3MEGA_RESERVATION \
       -var=placement_policy_name=$_A3MEGA_PLACEMENT_POLICY_NAME \
       -auto-approve -no-color

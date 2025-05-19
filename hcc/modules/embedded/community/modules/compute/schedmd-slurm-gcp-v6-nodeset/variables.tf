@@ -88,7 +88,7 @@ variable "instance_image" {
     EOD
   type        = map(string)
   default = {
-    family  = "slurm-gcp-6-8-hpc-rocky-linux-8"
+    family  = "slurm-gcp-6-9-hpc-rocky-linux-8"
     project = "schedmd-slurm-public"
   }
 
@@ -160,16 +160,31 @@ variable "disk_labels" {
   default     = {}
 }
 
+variable "disk_resource_manager_tags" {
+  description = "(Optional) A set of key/value resource manager tag pairs to bind to the instance disks. Keys must be in the format tagKeys/{tag_key_id}, and values are in the format tagValues/456."
+  type        = map(string)
+  default     = {}
+  validation {
+    condition     = alltrue([for value in var.disk_resource_manager_tags : can(regex("tagValues/[0-9]+", value))])
+    error_message = "All Resource Manager tag values should be in the format 'tagValues/[0-9]+'"
+  }
+  validation {
+    condition     = alltrue([for value in keys(var.disk_resource_manager_tags) : can(regex("tagKeys/[0-9]+", value))])
+    error_message = "All Resource Manager tag keys should be in the format 'tagKeys/[0-9]+'"
+  }
+}
+
 variable "additional_disks" {
   description = "Configurations of additional disks to be included on the partition nodes."
   type = list(object({
-    disk_name    = string
-    device_name  = string
-    disk_size_gb = number
-    disk_type    = string
-    disk_labels  = map(string)
-    auto_delete  = bool
-    boot         = bool
+    disk_name                  = string
+    device_name                = string
+    disk_size_gb               = number
+    disk_type                  = string
+    disk_labels                = map(string)
+    auto_delete                = bool
+    boot                       = bool
+    disk_resource_manager_tags = map(string)
   }))
   default = []
 }
@@ -227,10 +242,43 @@ variable "can_ip_forward" {
   default     = false
 }
 
-variable "enable_smt" {
+variable "advanced_machine_features" {
+  description = "See https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/compute_instance_template#nested_advanced_machine_features"
+  type = object({
+    enable_nested_virtualization = optional(bool)
+    threads_per_core             = optional(number)
+    turbo_mode                   = optional(string)
+    visible_core_count           = optional(number)
+    performance_monitoring_unit  = optional(string)
+    enable_uefi_networking       = optional(bool)
+  })
+  default = {
+    threads_per_core = 1 # disable SMT by default
+  }
+}
+
+variable "resource_manager_tags" {
+  description = "(Optional) A set of key/value resource manager tag pairs to bind to the instances. Keys must be in the format tagKeys/{tag_key_id}, and values are in the format tagValues/456."
+  type        = map(string)
+  default     = {}
+  validation {
+    condition     = alltrue([for value in var.resource_manager_tags : can(regex("tagValues/[0-9]+", value))])
+    error_message = "All Resource Manager tag values should be in the format 'tagValues/[0-9]+'"
+  }
+  validation {
+    condition     = alltrue([for value in keys(var.resource_manager_tags) : can(regex("tagKeys/[0-9]+", value))])
+    error_message = "All Resource Manager tag keys should be in the format 'tagKeys/[0-9]+'"
+  }
+}
+
+variable "enable_smt" { # tflint-ignore: terraform_unused_declarations
   type        = bool
-  description = "Enables Simultaneous Multi-Threading (SMT) on instance."
-  default     = false
+  description = "DEPRECATED: Use `advanced_machine_features.threads_per_core` instead."
+  default     = null
+  validation {
+    condition     = var.enable_smt == null
+    error_message = "DEPRECATED: Use `advanced_machine_features.threads_per_core` instead."
+  }
 }
 
 variable "labels" {
@@ -356,7 +404,16 @@ variable "disable_public_ips" { # tflint-ignore: terraform_unused_declarations
 
 
 variable "enable_placement" {
-  description = "Enable placement groups."
+  description = <<-EOD
+  Use placement policy for VMs in this nodeset.
+  See: https://cloud.google.com/compute/docs/instances/placement-policies-overview
+  To set max_distance of used policy, use `placement_max_distance` variable.
+
+  Enabled by default, reasons for users to disable it:
+  - If non-dense reservation is used, user can avoid extra-cost of creating placement policies;
+  - If user wants to avoid "all or nothing" VM provisioning behaviour;
+  - If user wants to intentionally have "spread" VMs (e.g. for reliability reasons)
+  EOD
   type        = bool
   default     = true
 }
@@ -488,10 +545,7 @@ variable "maintenance_interval" {
 }
 
 variable "startup_script" {
-  description = <<-EOD
-    Startup script used by VMs in this nodeset.
-    NOTE: will be executed after `compute_startup_script` defined on controller module.
-  EOD
+  description = "Startup script used by VMs in this nodeset"
   type        = string
   default     = "# no-op"
 }
@@ -542,7 +596,7 @@ variable "dws_flex" {
   See: https://cloud.google.com/blog/products/compute/introducing-dynamic-workload-scheduler
   Options:
   - enable: Enable DWS Flex Start
-  - max_run_duration: Maximum duration in seconds for the job to run, should not exceed 1,209,600 (2 weeks).
+  - max_run_duration: Maximum duration in seconds for the job to run, should not exceed 604,800 (one week).
   - use_job_duration: Use the job duration to determine the max_run_duration, if job duration is not set, max_run_duration will be used.
 
  Limitations:
@@ -554,15 +608,15 @@ variable "dws_flex" {
 
   type = object({
     enabled          = optional(bool, true)
-    max_run_duration = optional(number, 1209600) # 2 weeks
+    max_run_duration = optional(number, 604800) # one week
     use_job_duration = optional(bool, false)
   })
   default = {
     enabled = false
   }
   validation {
-    condition     = var.dws_flex.max_run_duration >= 30 && var.dws_flex.max_run_duration <= 1209600
-    error_message = "Max duration must be more than 30 seconds, and cannot be more than two weeks."
+    condition     = var.dws_flex.max_run_duration >= 30 && var.dws_flex.max_run_duration <= 604800
+    error_message = "Max duration must be more than 30 seconds, and cannot be more than one week."
   }
 }
 
