@@ -366,6 +366,23 @@ steps:
     # echo "pass" > /workspace/rag_prompt_result.txt
 
 
+- id: 'Copy metadata'
+  name: 'ubuntu'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    mkdir -p security_test/scan_target/ && find . -mindepth 1 -maxdepth 1 -type d ! -name "security_test" -exec cp -r {} security_test/scan_target/ \;
+    mkdir -p /workspace/security_test/scan_target
+    # Exclude /workspace/security_test from the copy to avoid recursive issue
+    find . -mindepth 1 -maxdepth 1 ! -path "./security_test" -exec cp -r {} /workspace/security_test/scan_target/ \;
+    chown -R 65532:65532 /workspace/security_test/scan_target
+    mkdir -p /workspace/security_test/allowlist
+    cp security_test/config.yaml /workspace/security_test/config.yaml
+    cp -r security_test/allowlist/* /workspace/security_test/allowlist/ || echo "Allowlist folder is empty or not found"
+  allowFailure: true
+  waitFor: ['Generate Kubeconfig']
+
 # gcr.io/cloud-builders/docker is a special image: This image provided by Google Cloud contains the docker command-line tool, which is essential for executing Docker commands like docker build and docker run within your Cloud Build steps.
 # gcr.io/${_PROJECT_ID}/check_violations:latest is your application image: This image contains your security check tool and its dependencies. It's designed to be run, not to build or run other Docker images.
 - name: 'gcr.io/cloud-builders/docker'
