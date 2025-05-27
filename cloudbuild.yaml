@@ -365,6 +365,20 @@ steps:
     # python3 ./rag/tests/test_rag.py "http://127.0.0.1:8081/prompt"
     # echo "pass" > /workspace/rag_prompt_result.txt
 
+- id: 'Generate Kubeconfig For Security Scan'
+  name: 'gcr.io/cloud-builders/gcloud'
+  env:
+  - 'KUBECONFIG=/workspace/kubeconfig'
+  - 'USE_GKE_GCLOUD_AUTH_PLUGIN=False'
+  args:
+  - 'container'
+  - 'clusters'
+  - 'get-credentials'
+  - 'ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster'
+  - '--region=${_REGION}'
+  - '--project=$PROJECT_ID'
+  allowFailure: true
+  waitFor: ['test rag']
 
 - id: 'Copy metadata'
   name: 'ubuntu'
@@ -381,7 +395,7 @@ steps:
     cp security_test/config.yaml /workspace/security_test/config.yaml
     cp -r security_test/allowlist/* /workspace/security_test/allowlist/ || echo "Allowlist folder is empty or not found"
   allowFailure: true
-  waitFor: ['Generate Kubeconfig']
+  waitFor: ['Generate Kubeconfig For Security Scan']
 
 # gcr.io/cloud-builders/docker is a special image: This image provided by Google Cloud contains the docker command-line tool, which is essential for executing Docker commands like docker build and docker run within your Cloud Build steps.
 # gcr.io/${_PROJECT_ID}/check_violations:latest is your application image: This image contains your security check tool and its dependencies. It's designed to be run, not to build or run other Docker images.
