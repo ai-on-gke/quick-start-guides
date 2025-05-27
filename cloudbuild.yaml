@@ -447,7 +447,7 @@ steps:
 - id: 'cleanup rag'
   name: "hashicorp/terraform:latest"
   allowFailure: true
-  waitFor: ['Run shipshape on cluster', 'Run Shipshape on helm']
+  waitFor: ['Run shipshape on cluster', 'Run Shipshape on helm', 'test rag']
   entrypoint: 'sh'
   args:
   - '-c'
