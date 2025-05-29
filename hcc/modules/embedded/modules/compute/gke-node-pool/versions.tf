@@ -18,26 +18,21 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = "> 5"
+      version = ">= 6.16"
     }
     google-beta = {
       source  = "hashicorp/google-beta"
-      version = "> 5"
+      version = ">= 6.16"
     }
     null = {
       source  = "hashicorp/null"
       version = "~> 3.0"
     }
-    kubectl = {
-      source  = "gavinbunney/kubectl"
-      version = ">= 1.7.0"
-    }
-    http = {
-      source  = "hashicorp/http"
-      version = "~> 3.0"
-    }
   }
   provider_meta "google" {
+    module_name = "blueprints/terraform/hpc-toolkit:gke-node-pool/v1.48.0"
+  }
+  provider_meta "google-beta" {
     module_name = "blueprints/terraform/hpc-toolkit:gke-node-pool/v1.45.0"
   }
 }

@@ -26,24 +26,26 @@ provider "google-beta" {
   zone    = local.zone
 }
 
-provider "kubectl" {
-  host                   = local.gke_cluster_endpoint
-  token                  = data.google_client_config.default.access_token
-  cluster_ca_certificate = base64decode(local.gke_cluster_ca_cert)
-  load_config_file       = false
-  apply_retry_count      = 15 # Terraform may apply resources in parallel, leading to potential dependency issues. This retry mechanism ensures that if a resource's dependencies aren't ready, Terraform will attempt to apply it again.
+locals {
+  # Although we can infer cluster_name and cluster_location from input variables, terraform plan
+  # will throws cluster not found error since it has not been created yet. Instead, we use the
+  # cluster_id output from clutser modules to create the implicit dependency.
+  cluster_id_parts = split("/", module.gke-cluster.cluster_id)
+  cluster_name     = local.cluster_id_parts[5]
+  cluster_location = local.cluster_id_parts[3]
 }
 
-provider "kubernetes" {
-  host                   = local.gke_cluster_endpoint
-  cluster_ca_certificate = base64decode(local.gke_cluster_ca_cert)
-  token                  = data.google_client_config.default.access_token
-} 
+data "google_container_cluster" "gke_cluster" {
+  project  = var.project_id
+  name     = local.cluster_name
+  location = local.cluster_location
+}
 
 provider "helm" {
   kubernetes {
-    host                   = local.gke_cluster_endpoint
+    host                   = data.google_container_cluster.gke_cluster.endpoint
     token                  = data.google_client_config.default.access_token
-    cluster_ca_certificate = base64decode(local.gke_cluster_ca_cert)
+    cluster_ca_certificate = base64decode(data.google_container_cluster.gke_cluster.master_auth[0].cluster_ca_certificate)
   }
 }
+

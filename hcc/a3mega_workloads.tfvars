@@ -19,14 +19,15 @@ authorized_cidr = "0.0.0.0/0"
 goog_cm_deployment_name = "a3mega-qss-test"
 
 labels = {
-  ghpc_blueprint  = "gke-a3-mega"
-  ghpc_deployment = "a3mega-qss-test"
+  created-by="gke-ai-quick-start-solutions"
+  gke_product_type="cluster-director-qss"
 }
 
-project_id = "gke-ai-eco-dev"
+project_id = "supercomputer-testing"
 
 a3_mega_zone = "australia-southeast1-c"
 a3_ultra_zone = ""
+a4_high_zone = ""
 
 gpu_type = "A3 Mega"
 
@@ -36,6 +37,7 @@ placement_policy_name = "kevinmcw-test"
 
 a3mega_recipe = "gke"
 a3ultra_recipe = ""
+a4high_recipe = ""
 node_count_gke_nccl = -1
 node_count_gke = 0
 node_count_nemo = -1
@@ -43,3 +45,4 @@ node_count_maxtext = -1
 node_count_llama_3_7b = -1
 a3_mega_consumption_model = "Reservation"
 a3_ultra_consumption_model = ""
+a4_high_consumption_model = ""

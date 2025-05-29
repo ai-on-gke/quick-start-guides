@@ -57,6 +57,11 @@ variable "a3_ultra_zone" {
   type        = string
 }
 
+variable "a4_high_zone" {
+  description = "Toolkit deployment variable: a3_ultra_zone"
+  type        = string
+}
+
 variable "node_count_gke" {
   description = "Toolkit deployment variable: node_count_gke"
   type        = number
@@ -97,6 +102,11 @@ variable "a3ultra_recipe" {
   type        = string
 }
 
+variable "a4high_recipe" {
+  description = "Toolkit deployment variable: a3ultra_recipe"
+  type        = string
+}
+
 variable "gpu_type" {
   description = "Toolkit deployment variable: gpu_type"
   type        = string
@@ -112,12 +122,19 @@ variable "a3_mega_consumption_model" {
   type        = string
 }
 
+variable "a4_high_consumption_model" {
+  description = "Toolkit deployment variable: a4_mega_consumption_model"
+  type        = string
+}
+
 locals {
   placement_policy_valid = var.gpu_type != "A3 Mega" || local.recipe == "gke" || length(var.placement_policy_name) > 0
-  a3_consumption_model_check = length(var.a3_ultra_consumption_model) > 0 || length(var.a3_mega_consumption_model) > 0
+  a3_consumption_model_check = length(var.a3_ultra_consumption_model) > 0 || length(var.a3_mega_consumption_model) > 0 || length(var.a4_high_consumption_model) > 0
+
   recipe = {
     "A3 Mega" = var.a3mega_recipe
     "A3 Ultra" = var.a3ultra_recipe
+    "A4 High" = var.a4high_recipe
   }[var.gpu_type]
   recipes_not_empty = length(local.recipe) > 0
   reservation_valid = !(local.recipe != "gke") || length(var.reservation) > 0

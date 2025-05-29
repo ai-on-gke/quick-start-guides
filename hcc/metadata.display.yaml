@@ -35,6 +35,8 @@ spec:
             value: A3 Mega
           - label: 'A3 Ultra, NVIDIA H200 141GB: a3-ultragpu-8g'
             value: A3 Ultra
+          - label: 'A4 High, NVIDIA B200 192GB: a4-highgpu-8g'
+            value: A4 High
         a3_mega_zone:
           name: a3_mega_zone
           title: Cluster zone
@@ -95,6 +97,22 @@ spec:
             variableValues:
             - A3 Ultra
             type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
+        a4_high_zone:
+          name: a4_high_zone
+          title: Cluster zone
+          section: required_config
+          subtext: Select from locations with available accelerators. If you have
+            a reservation, select the zone where your reservation is located.
+          xGoogleProperty:
+            type: ET_GCE_ZONE
+            gce_zone:
+              allowlisted_zones:
+              - us-central1-b
+          toggleUsingVariables:
+          - variableName: gpu_type
+            variableValues:
+            - A4 High
+            type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
         a3_mega_consumption_model:
           name: a3_mega_consumption_model
           title: Consumption options
@@ -123,6 +141,20 @@ spec:
             variableValues:
             - A3 Ultra
             type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
+        a4_high_consumption_model:
+          name: a4_high_consumption_model
+          title: Consumption options
+          section: required_config
+          subtext: See <a href="https://cloud.google.com/ai-hypercomputer/docs/consumption-models"><i>Consumption
+            options</i></a> for more details.</br>
+          enumValueLabels:
+          - label: Reservation
+            value: Reservation
+          toggleUsingVariables:
+          - variableName: gpu_type
+            variableValues:
+            - A4 High
+            type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
         reservation:
           name: reservation
           title: Reservation name
@@ -139,6 +171,7 @@ spec:
           - variableName: gpu_type
             variableValues:
             - A3 Ultra
+            - A4 High
             type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
         placement_policy_name:
           name: placement_policy_name
@@ -195,6 +228,19 @@ spec:
             variableValues:
             - A3 Ultra
             type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
+        a4high_recipe:
+          name: recipe
+          title: Solution deployment option
+          section: required_config
+          subtext: Select your deployment option.
+          enumValueLabels:
+          - label: GKE Cluster Only
+            value: gke
+          toggleUsingVariables:
+          - variableName: gpu_type
+            variableValues:
+            - A4 High
+            type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
         node_count_gke:
           name: node_count_gke
           title: Node count
@@ -210,6 +256,10 @@ spec:
             variableValues:
             - gke
             type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
+          - variableName: a4high_recipe
+            variableValues:
+            - gke
+            type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
         node_count_gke_nccl:
           name: node_count_gke_nccl
           title: Node count
@@ -222,6 +272,10 @@ spec:
             - gke-nccl
             type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
           - variableName: a3ultra_recipe
+            variableValues:
+            - gke-nccl
+            type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED
+          - variableName: a4high_recipe
             variableValues:
             - gke-nccl
             type: DISPLAY_VARIABLE_TOGGLE_TYPE_UNSPECIFIED

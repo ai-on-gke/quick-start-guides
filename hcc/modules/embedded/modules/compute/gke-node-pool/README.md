@@ -279,16 +279,16 @@ limitations under the License.
 | Name | Version |
 |------|---------|
 | <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) | >= 1.5 |
-| <a name="requirement_google"></a> [google](#requirement\_google) | > 5 |
-| <a name="requirement_google-beta"></a> [google-beta](#requirement\_google-beta) | > 5 |
+| <a name="requirement_google"></a> [google](#requirement\_google) | >= 6.16 |
+| <a name="requirement_google-beta"></a> [google-beta](#requirement\_google-beta) | >= 6.16 |
 | <a name="requirement_null"></a> [null](#requirement\_null) | ~> 3.0 |
 
 ## Providers
 
 | Name | Version |
 |------|---------|
-| <a name="provider_google"></a> [google](#provider\_google) | > 5 |
-| <a name="provider_google-beta"></a> [google-beta](#provider\_google-beta) | > 5 |
+| <a name="provider_google"></a> [google](#provider\_google) | >= 6.16 |
+| <a name="provider_google-beta"></a> [google-beta](#provider\_google-beta) | >= 6.16 |
 | <a name="provider_null"></a> [null](#provider\_null) | ~> 3.0 |
 
 ## Modules
@@ -314,6 +314,7 @@ limitations under the License.
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
 | <a name="input_additional_networks"></a> [additional\_networks](#input\_additional\_networks) | Additional network interface details for GKE, if any. Providing additional networks adds additional node networks to the node pool | <pre>list(object({<br/>    network            = string<br/>    subnetwork         = string<br/>    subnetwork_project = string<br/>    network_ip         = string<br/>    nic_type           = string<br/>    stack_type         = string<br/>    queue_count        = number<br/>    access_config = list(object({<br/>      nat_ip       = string<br/>      network_tier = string<br/>    }))<br/>    ipv6_access_config = list(object({<br/>      network_tier = string<br/>    }))<br/>    alias_ip_range = list(object({<br/>      ip_cidr_range         = string<br/>      subnetwork_range_name = string<br/>    }))<br/>  }))</pre> | `[]` | no |
+| <a name="input_auto_repair"></a> [auto\_repair](#input\_auto\_repair) | Whether the nodes will be automatically repaired. | `bool` | `true` | no |
 | <a name="input_auto_upgrade"></a> [auto\_upgrade](#input\_auto\_upgrade) | Whether the nodes will be automatically upgraded. | `bool` | `false` | no |
 | <a name="input_autoscaling_total_max_nodes"></a> [autoscaling\_total\_max\_nodes](#input\_autoscaling\_total\_max\_nodes) | Total maximum number of nodes in the NodePool. | `number` | `1000` | no |
 | <a name="input_autoscaling_total_min_nodes"></a> [autoscaling\_total\_min\_nodes](#input\_autoscaling\_total\_min\_nodes) | Total minimum number of nodes in the NodePool. | `number` | `0` | no |
@@ -322,6 +323,8 @@ limitations under the License.
 | <a name="input_disk_size_gb"></a> [disk\_size\_gb](#input\_disk\_size\_gb) | Size of disk for each node. | `number` | `100` | no |
 | <a name="input_disk_type"></a> [disk\_type](#input\_disk\_type) | Disk type for each node. | `string` | `null` | no |
 | <a name="input_enable_gcfs"></a> [enable\_gcfs](#input\_enable\_gcfs) | Enable the Google Container Filesystem (GCFS). See [restrictions](https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/container_cluster#gcfs_config). | `bool` | `false` | no |
+| <a name="input_enable_private_nodes"></a> [enable\_private\_nodes](#input\_enable\_private\_nodes) | Whether nodes have internal IP addresses only. | `bool` | `false` | no |
+| <a name="input_enable_queued_provisioning"></a> [enable\_queued\_provisioning](#input\_enable\_queued\_provisioning) | If true, enables Dynamic Workload Scheduler and adds the cloud.google.com/gke-queued taint to the node pool. | `bool` | `false` | no |
 | <a name="input_enable_secure_boot"></a> [enable\_secure\_boot](#input\_enable\_secure\_boot) | Enable secure boot for the nodes.  Keep enabled unless custom kernel modules need to be loaded. See [here](https://cloud.google.com/compute/shielded-vm/docs/shielded-vm#secure-boot) for more info. | `bool` | `true` | no |
 | <a name="input_gke_version"></a> [gke\_version](#input\_gke\_version) | GKE version | `string` | n/a | yes |
 | <a name="input_guest_accelerator"></a> [guest\_accelerator](#input\_guest\_accelerator) | List of the type and count of accelerator cards attached to the instance. | <pre>list(object({<br/>    type  = optional(string)<br/>    count = optional(number, 0)<br/>    gpu_driver_installation_config = optional(object({<br/>      gpu_driver_version = string<br/>    }), { gpu_driver_version = "DEFAULT" })<br/>    gpu_partition_size = optional(string)<br/>    gpu_sharing_config = optional(object({<br/>      gpu_sharing_strategy       = string<br/>      max_shared_clients_per_gpu = number<br/>    }))<br/>  }))</pre> | `[]` | no |
@@ -336,6 +339,7 @@ limitations under the License.
 | <a name="input_machine_type"></a> [machine\_type](#input\_machine\_type) | The name of a Google Compute Engine machine type. | `string` | `"c2-standard-60"` | no |
 | <a name="input_max_pods_per_node"></a> [max\_pods\_per\_node](#input\_max\_pods\_per\_node) | The maximum number of pods per node in this node pool. This will force replacement. | `number` | `null` | no |
 | <a name="input_name"></a> [name](#input\_name) | The name of the node pool. If not set, automatically populated by machine type and module id (unique blueprint-wide) as suffix.<br/>If setting manually, ensure a unique value across all gke-node-pools. | `string` | `null` | no |
+| <a name="input_num_node_pools"></a> [num\_node\_pools](#input\_num\_node\_pools) | Number of node pools to create. For TPUs, this is the number of slices. | `number` | `1` | no |
 | <a name="input_placement_policy"></a> [placement\_policy](#input\_placement\_policy) | Group placement policy to use for the node pool's nodes. `COMPACT` is the only supported value for `type` currently. `name` is the name of the placement policy.<br/>It is assumed that the specified policy exists. To create a placement policy refer to https://cloud.google.com/sdk/gcloud/reference/compute/resource-policies/create/group-placement.<br/>Note: Placement policies have the [following](https://cloud.google.com/compute/docs/instances/placement-policies-overview#restrictions-compact-policies) restrictions. | <pre>object({<br/>    type = string<br/>    name = optional(string)<br/>  })</pre> | <pre>{<br/>  "name": null,<br/>  "type": null<br/>}</pre> | no |
 | <a name="input_project_id"></a> [project\_id](#input\_project\_id) | The project ID to host the cluster in. | `string` | n/a | yes |
 | <a name="input_reservation_affinity"></a> [reservation\_affinity](#input\_reservation\_affinity) | Reservation resource to consume. When targeting SPECIFIC\_RESERVATION, specific\_reservations needs be specified.<br/>Even though specific\_reservations is a list, only one reservation is allowed by the NodePool API.<br/>It is assumed that the specified reservation exists and has available capacity.<br/>For a shared reservation, specify the project\_id as well in which it was created.<br/>To create a reservation refer to https://cloud.google.com/compute/docs/instances/reservations-single-project and https://cloud.google.com/compute/docs/instances/reservations-shared | <pre>object({<br/>    consume_reservation_type = string<br/>    specific_reservations = optional(list(object({<br/>      name    = string<br/>      project = optional(string)<br/>    })))<br/>  })</pre> | <pre>{<br/>  "consume_reservation_type": "NO_RESERVATION",<br/>  "specific_reservations": []<br/>}</pre> | no |
@@ -362,7 +366,7 @@ limitations under the License.
 | <a name="output_allocatable_gpu_per_node"></a> [allocatable\_gpu\_per\_node](#output\_allocatable\_gpu\_per\_node) | Number of GPUs available for scheduling pods on each node. |
 | <a name="output_has_gpu"></a> [has\_gpu](#output\_has\_gpu) | Boolean value indicating whether nodes in the pool are configured with GPUs. |
 | <a name="output_instructions"></a> [instructions](#output\_instructions) | Instructions for submitting the sample GPUDirect enabled job. |
-| <a name="output_node_pool_name"></a> [node\_pool\_name](#output\_node\_pool\_name) | Name of the node pool. |
+| <a name="output_node_pool_names"></a> [node\_pool\_names](#output\_node\_pool\_names) | Names of the node pools. |
 | <a name="output_static_gpu_count"></a> [static\_gpu\_count](#output\_static\_gpu\_count) | Total number of GPUs in the node pool. Available only for static node pools. |
 | <a name="output_tolerations"></a> [tolerations](#output\_tolerations) | Tolerations needed for a pod to be scheduled on this node pool. |
 <!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->
