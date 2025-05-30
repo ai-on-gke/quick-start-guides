@@ -61,7 +61,7 @@ module "project-services" {
 }
 
 module "infra" {
-  source = "../common/infrastructure"
+  source = "github.com/ai-on-gke/common-infra/common/infrastructure"
   count  = var.create_cluster ? 1 : 0
 
   project_id        = var.project_id
@@ -146,21 +146,21 @@ provider "helm" {
 }
 
 module "namespace" {
-  source           = "../common/modules/kubernetes-namespace"
+  source           = "github.com/ai-on-gke/common-infra/common/modules/kubernetes-namespace"
   providers        = { helm = helm.rag }
   create_namespace = true
   namespace        = local.kubernetes_namespace
 }
 
 module "gcs" {
-  source      = "../common/modules/gcs"
+  source      = "github.com/ai-on-gke/common-infra/common/modules/gcs"
   count       = var.create_gcs_bucket ? 1 : 0
   project_id  = var.project_id
   bucket_name = var.gcs_bucket
 }
 
 module "cloudsql" {
-  source        = "../common/modules/cloudsql"
+  source        = "github.com/ai-on-gke/common-infra/common/modules/cloudsql?ref=migrate-modules"
   providers     = { kubernetes = kubernetes.rag }
   project_id    = var.project_id
   instance_name = local.cloudsql_instance
@@ -171,7 +171,7 @@ module "cloudsql" {
 }
 
 module "jupyterhub" {
-  source            = "../common/modules/jupyter"
+  source            = "github.com/ai-on-gke/common-infra/common/modules/jupyter?ref=migrate-modules"
   providers         = { helm = helm.rag, kubernetes = kubernetes.rag }
   namespace         = local.kubernetes_namespace
   project_id        = var.project_id
@@ -220,7 +220,7 @@ module "kuberay-workload-identity" {
 }
 
 module "kuberay-monitoring" {
-  source                          = "../common/modules/kuberay-monitoring"
+  source                          = "github.com/ai-on-gke/common-infra/common/kuberay-monitoring"
   providers                       = { helm = helm.rag, kubernetes = kubernetes.rag }
   project_id                      = var.project_id
   autopilot_cluster               = local.enable_autopilot
@@ -232,7 +232,7 @@ module "kuberay-monitoring" {
 }
 
 module "kuberay-cluster" {
-  source                 = "../common/modules/kuberay-cluster"
+  source                 = "github.com/ai-on-gke/common-infra/common/modules/kuberay-cluster?ref=migrate-modules"
   providers              = { helm = helm.rag, kubernetes = kubernetes.rag }
   project_id             = var.project_id
   namespace              = local.kubernetes_namespace
@@ -267,7 +267,7 @@ module "kuberay-cluster" {
 }
 
 module "inference-server" {
-  source            = "../common/modules/inference-service"
+  source            = "github.com/ai-on-gke/common-infra/common/modules/inference-service"
   providers         = { kubernetes = kubernetes.rag }
   namespace         = local.kubernetes_namespace
   additional_labels = var.additional_labels
