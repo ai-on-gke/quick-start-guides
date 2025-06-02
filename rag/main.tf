@@ -220,7 +220,7 @@ module "kuberay-workload-identity" {
 }
 
 module "kuberay-monitoring" {
-  source                          = "github.com/ai-on-gke/common-infra/common/kuberay-monitoring"
+  source                          = "github.com/ai-on-gke/common-infra/common/modules/kuberay-monitoring?ref=migrate-modules"
   providers                       = { helm = helm.rag, kubernetes = kubernetes.rag }
   project_id                      = var.project_id
   autopilot_cluster               = local.enable_autopilot
