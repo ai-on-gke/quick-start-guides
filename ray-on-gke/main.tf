@@ -150,7 +150,7 @@ module "kuberay-workload-identity" {
 
 module "kuberay-monitoring" {
   count                           = var.create_ray_cluster ? 1 : 0
-  source                          = "github.com/ai-on-gke/common-infra/common/modules/kuberay-monitoring?ref=migrate-modules"
+  source                          = "github.com/ai-on-gke/common-infra/common/modules/kuberay-monitoring?ref=main"
   providers                       = { helm = helm.ray, kubernetes = kubernetes.ray }
   project_id                      = var.project_id
   autopilot_cluster               = var.autopilot_cluster
@@ -170,7 +170,7 @@ module "gcs" {
 
 module "kuberay-cluster" {
   count                     = var.create_ray_cluster == true ? 1 : 0
-  source                    = "github.com/ai-on-gke/common-infra/common/modules/kuberay-cluster?ref=migrate-modules"
+  source                    = "github.com/ai-on-gke/common-infra/common/modules/kuberay-cluster?ref=main"
   providers                 = { helm = helm.ray, kubernetes = kubernetes.ray }
   name                      = var.ray_cluster_name
   namespace                 = local.kubernetes_namespace
