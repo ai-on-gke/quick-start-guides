@@ -19,7 +19,8 @@ steps:
   args:
   - "-c"
   - |
-    git clone https://github.com/ai-on-gke/common-infra.git /workspace/
+    echo "test this step"
+    git clone https://github.com/ai-on-gke/common-infra.git /workspace/common
   waitFor: ["-"]
 
 - id: "validate platform"
@@ -516,6 +517,8 @@ steps:
   args:
   - '-c'
   - |
+    set -e
+
     if [[ $(cat /workspace/gke_cluster_result.txt) != "pass" ]]; then
       echo "gke cluster creation failed"
       exit 1
@@ -565,12 +568,12 @@ steps:
     #   echo "rag prompt test failed"
     #   exit 1
     # fi
- 
+
     if grep -q "Validation failed" /workspace/shipshape_on_cluster.txt; then
       echo "Shipshape on cluster scan validation failed, please check the log. knowledge share slides: go/shipshape-ai-on-gke-slide"
       exit 1
     fi
-    
+
     if grep -q "Validation failed" /workspace/shipshape_on_helm.txt; then
       echo "Shipshape on helm scan validation failed, please check the log. knowledge share slides: go/shipshape-ai-on-gke-slide"
       exit 1
