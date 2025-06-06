@@ -160,7 +160,7 @@ module "gcs" {
 }
 
 module "cloudsql" {
-  source        = "github.com/ai-on-gke/common-infra/common/modules/cloudsql?ref=main"
+  source        = "github.com/ai-on-gke/common-infra/common/modules/cloudsql?ref=migrate-modules"
   providers     = { kubernetes = kubernetes.rag }
   project_id    = var.project_id
   instance_name = local.cloudsql_instance

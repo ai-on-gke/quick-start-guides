@@ -139,7 +139,7 @@ module "namespace" {
 
 # Creates jupyterhub
 module "jupyterhub" {
-  source                            = "github.com/ai-on-gke/common-infra/common/modules/jupyter?ref=main"
+  source                            = "github.com/ai-on-gke/common-infra/common/modules/jupyter?ref=migrate-modules"
   providers                         = { helm = helm.jupyter, kubernetes = kubernetes.jupyter }
   project_id                        = var.project_id
   namespace                         = local.kubernetes_namespace
