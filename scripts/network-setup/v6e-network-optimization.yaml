@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tpu-network-optimization
+  namespace: kube-system
+  labels:
+    k8s-app: tpu-network-optimization
+spec:
+  selector:
+    matchLabels:
+      k8s-app: tpu-network-optimization
+  template:
+    metadata:
+      labels:
+        k8s-app: tpu-network-optimization
+    spec:
+      priorityClassName: system-node-critical
+      # hostNetwork: true prevents a pod IP from being allocated to this pod, which can help with IP space utilization.
+      hostNetwork: true
+      hostPID: true
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-tpu-accelerator
+                operator: In
+                values:
+                - tpu-v6e-slice
+      tolerations:
+      - operator: "Exists"
+        effect: "NoExecute"
+      - operator: "Exists"
+        effect: "NoSchedule"
+      initContainers:
+      - name: "tpu-network-optimization"
+        image: "gke.gcr.io/tpu_network_optimizer@sha256:e5aba9c51fc0750863187bb22767b12890a16fd98dd74fd012f3510d38874dde"
+        securityContext:
+          privileged: true
+        command:
+        - /tpu_network_optimizer.sh
+        volumeMounts:
+        - name: sys
+          mountPath: /sys
+        - name: proc
+          mountPath: /proc
+      volumes:
+      - name: sys
+        hostPath:
+          path: /sys
+          type: Directory
+      - name: proc
+        hostPath:
+          path: /proc
+          type: Directory
+      containers:
+      - image: "gke.gcr.io/pause:3.8@sha256:880e63f94b145e46f1b1082bb71b85e21f16b99b180b9996407d61240ceb9830"
+        name: pause
