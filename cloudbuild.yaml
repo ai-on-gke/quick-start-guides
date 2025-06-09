@@ -16,17 +16,17 @@ steps:
 - id: "clone common-infra"
   name: "gcr.io/cloud-builders/git"
   entrypoint: "bash"
+  waitFor: ["-"]
   args:
   - "-c"
   - |
     git clone -b migrate-modules --single-branch https://github.com/ai-on-gke/common-infra.git /workspace/common-infra
     mv /workspace/common-infra/common /workspace/common
-  waitFor: ["-"]
 
 - id: "validate platform"
   name: "hashicorp/terraform:latest"
   dir: "/workspace/common/infrastructure/"
-  waitFor: ["-"]
+  waitFor: ["clone common-infra"]
   script: |
     terraform init -no-color
     terraform validate -no-color
