@@ -125,7 +125,7 @@ steps:
   name: "gcr.io/cloud-builders/kubectl"
   env:
     - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
-    - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
+    - "CLOUDSDK_CONTAINER_CLUSTER=ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster"
   entrypoint: 'sh'
   args:
   - '-c'
@@ -218,7 +218,7 @@ steps:
   name: "gcr.io/cloud-builders/kubectl"
   env:
   - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
-  - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
+  - "CLOUDSDK_CONTAINER_CLUSTER=ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster"
   entrypoint: 'sh'
   args:
   - '-c'
@@ -249,8 +249,6 @@ steps:
   - '-c'
   - |
     set -e
-
-    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
 
     cd /workspace/jupyter/
     terraform destroy \
@@ -461,9 +459,6 @@ steps:
   - |
     set -e
     exit 1
-    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
-    # -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
-
     cd /workspace/rag/
     terraform destroy \
     -var-file=workloads.tfvars \
@@ -493,7 +488,6 @@ steps:
   - |
     set -e
 
-    exit 1
     echo "cleanup gke cluster step!"
     terraform destroy \
     -var-file=tfvars_tests/standard-gke-public.platform.tfvars \
@@ -513,7 +507,7 @@ steps:
 - id: 'check result'
   # name: 'gcr.io/$PROJECT_ID/terraform'
   name: "hashicorp/terraform:latest"
-  entrypoint: 'sh'
+  entrypoint: 'bash'
   args:
   - '-c'
   - |
