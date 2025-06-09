@@ -15,7 +15,7 @@
 steps:
 - id: "clone common-infra"
   name: "gcr.io/cloud-builders/git"
-  entrypoint: "bash"
+  entrypoint: "sh"
   waitFor: ["-"]
   args:
   - "-c"
@@ -392,7 +392,7 @@ steps:
 
 - id: 'Copy metadata'
   name: 'ubuntu'
-  entrypoint: 'bash'
+  entrypoint: 'sh'
   args:
   - '-c'
   - |
@@ -411,7 +411,7 @@ steps:
 # gcr.io/${_PROJECT_ID}/check_violations:latest is your application image: This image contains your security check tool and its dependencies. It's designed to be run, not to build or run other Docker images.
 - name: 'gcr.io/cloud-builders/docker'
   id: 'Run shipshape on cluster'
-  entrypoint: 'bash'
+  entrypoint: 'sh'
   args:
   - '-c'
   - |
