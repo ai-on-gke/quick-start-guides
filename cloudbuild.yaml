@@ -19,7 +19,8 @@ steps:
   args:
   - "-c"
   - |
-    git clone -b migrate-modules --single-branch https://github.com/ai-on-gke/common-infra.git /workspace/common
+    git clone -b migrate-modules --single-branch https://github.com/ai-on-gke/common-infra.git /workspace/common-infra
+    mv /workspace/common-infra/common /workspace/common
   waitFor: ["-"]
 
 - id: "validate platform"
