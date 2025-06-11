@@ -270,7 +270,7 @@ steps:
   - '-c'
   - |
     set -e
-    exit 1
+
     apk update && \
     apk add --no-cache \
         python3 \
@@ -457,7 +457,7 @@ steps:
   - '-c'
   - |
     set -e
-    exit 1
+
     cd /workspace/rag/
     terraform destroy \
     -var-file=workloads.tfvars \
