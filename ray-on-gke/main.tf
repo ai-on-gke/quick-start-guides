@@ -59,7 +59,7 @@ module "project-services" {
 }
 
 module "infra" {
-  source = "github.com/dmitriy-drogovoz-us/common-infra/common/infrastructure?ref=migrate-modules"
+  source = "github.com/ai-on-gke/common-infra/common/infrastructure?ref=migrate-modules"
   count  = var.create_cluster ? 1 : 0
 
   project_id        = var.project_id
@@ -129,7 +129,7 @@ provider "helm" {
 }
 
 module "namespace" {
-  source           = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/kubernetes-namespace?ref=migrate-modules"
+  source           = "github.com/ai-on-gke/common-infra/common/modules/kubernetes-namespace?ref=migrate-modules"
   providers        = { helm = helm.ray }
   create_namespace = true
   namespace        = local.kubernetes_namespace
@@ -150,7 +150,7 @@ module "kuberay-workload-identity" {
 
 module "kuberay-monitoring" {
   count                           = var.create_ray_cluster ? 1 : 0
-  source                          = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/kuberay-monitoring?ref=migrate-modules"
+  source                          = "github.com/ai-on-gke/common-infra/common/modules/kuberay-monitoring?ref=migrate-modules"
   providers                       = { helm = helm.ray, kubernetes = kubernetes.ray }
   project_id                      = var.project_id
   autopilot_cluster               = var.autopilot_cluster
@@ -162,7 +162,7 @@ module "kuberay-monitoring" {
 }
 
 module "gcs" {
-  source      = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/gcs?ref=migrate-modules"
+  source      = "github.com/ai-on-gke/common-infra/common/modules/gcs?ref=migrate-modules"
   count       = var.create_gcs_bucket ? 1 : 0
   project_id  = var.project_id
   bucket_name = var.gcs_bucket
@@ -170,7 +170,7 @@ module "gcs" {
 
 module "kuberay-cluster" {
   count                     = var.create_ray_cluster == true ? 1 : 0
-  source                    = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/kuberay-cluster?ref=migrate-modules"
+  source                    = "github.com/ai-on-gke/common-infra/common/modules/kuberay-cluster?ref=migrate-modules"
   providers                 = { helm = helm.ray, kubernetes = kubernetes.ray }
   name                      = var.ray_cluster_name
   namespace                 = local.kubernetes_namespace
