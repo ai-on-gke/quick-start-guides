@@ -184,19 +184,19 @@ steps:
   - |
     set -e
 
-    apk update && \
-    apk add --no-cache \
-        python3 \
-        py3-pip \
-        py3-virtualenv
+    # apk update && \
+    # apk add --no-cache \
+    #     python3 \
+    #     py3-pip \
+    #     py3-virtualenv
 
-    python3 -m venv venv
-    . venv/bin/activate
-    pip install pyyaml requests
+    # python3 -m venv venv
+    # . venv/bin/activate
+    # pip install pyyaml requests
 
-    cd /workspace/common/modules/jupyter/tests
-    python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
-    deactivate
+    # cd /workspace/common/modules/jupyter/tests
+    # python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
+    # deactivate
 
     cd /workspace/jupyter
     terraform apply \
@@ -271,19 +271,19 @@ steps:
   - |
     set -e
 
-    apk update && \
-    apk add --no-cache \
-        python3 \
-        py3-pip \
-        py3-virtualenv
+    # apk update && \
+    # apk add --no-cache \
+    #     python3 \
+    #     py3-pip \
+    #     py3-virtualenv
 
-    python3 -m venv venv_rag
-    . venv_rag/bin/activate
-    pip install pyyaml requests
+    # python3 -m venv venv_rag
+    # . venv_rag/bin/activate
+    # pip install pyyaml requests
 
-    cd /workspace/common/modules/jupyter/tests
-    python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
-    deactivate
+    # cd /workspace/common/modules/jupyter/tests
+    # python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
+    # deactivate
 
     # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
     # -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
