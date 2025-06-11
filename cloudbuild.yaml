@@ -505,7 +505,7 @@ steps:
 
 - id: 'check result'
   # name: 'gcr.io/$PROJECT_ID/terraform'
-  name: "hashicorp/terraform:latest"
+  name: "ubuntu"
   entrypoint: 'bash'
   args:
   - '-c'
