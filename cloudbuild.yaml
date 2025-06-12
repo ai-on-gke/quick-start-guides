@@ -481,63 +481,69 @@ steps:
   - |
     set -e
 
+    echo pass > /workspace/final_result.txt
+
     if [[ $(cat /workspace/gke_cluster_result.txt) != "pass" ]]; then
       echo "gke cluster creation failed"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if [[ $(cat /workspace/user_result.txt) != "pass" ]]; then
       echo "ray creation tf failed"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if [[ $(cat /workspace/ray_result.txt) != "pass" ]]; then
       echo "ray test failed"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if [[ $(cat /workspace/jupyterhub_tf_result.txt) != "pass" ]]; then
       echo "jupyterhub creation tf failed"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if [[ $(cat /workspace/jupyterhub_test_result.txt) != "pass" ]]; then
       echo "jupyterhub test failed"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if [[ $(cat /workspace/jupyterhub_test_result.txt) != "pass" ]]; then
       echo "jupyterhub test failed"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if [[ $(cat /workspace/rag_tf_result.txt) != "pass" ]]; then
       echo "rag tf failed"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if [[ $(cat /workspace/rag_jupyterhub_test_result.txt) != "pass" ]]; then
       echo "rag jupyterhub test failed"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if [[ $(cat /workspace/rag_frontend_result.txt) != "pass" ]]; then
       echo "rag frontend test failed"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if [[ $(cat /workspace/rag_prompt_result.txt) != "pass" ]]; then
       echo "rag prompt test failed"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if grep -q "Validation failed" /workspace/shipshape_on_cluster.txt; then
       echo "Shipshape on cluster scan validation failed, please check the log. knowledge share slides: go/shipshape-ai-on-gke-slide"
-      exit 1
+      echo fail > /workspace/final_result.txt
     fi
 
     if grep -q "Validation failed" /workspace/shipshape_on_helm.txt; then
       echo "Shipshape on helm scan validation failed, please check the log. knowledge share slides: go/shipshape-ai-on-gke-slide"
+      echo fail > /workspace/final_result.txt
+    fi
+
+    if [[ $(cat /workspace/final_result.txt) != "pass" ]]; then
       exit 1
     fi
   allowFailure: false
