@@ -257,6 +257,20 @@ steps:
   - |
     set -e
 
+    apk update && \
+    apk add --no-cache \
+        python3 \
+        py3-pip \
+        py3-virtualenv
+
+    python3 -m venv venv_rag
+    . venv_rag/bin/activate
+    pip install pyyaml requests
+
+    cd /workspace/common/modules/jupyter/tests
+    python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
+    deactivate
+
     cd /workspace/rag/
     terraform apply \
     -var-file=workloads.tfvars \
