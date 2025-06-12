@@ -301,7 +301,7 @@ steps:
     pip install pyyaml requests packaging
 
     # Validate Ray: Check dashboard
-    ray job submit --working-dir ./tests \
+    ray job submit --working-dir /workspace/rag/tests \
     --address=http://127.0.0.1:8262 -- python -c "import ray; ray.init(); print(ray.cluster_resources())"
     echo "pass" > /workspace/rag_ray_dashboard_result.txt
 
