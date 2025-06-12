@@ -287,57 +287,57 @@ steps:
   - |
     set -e
     echo "This is mocked step that should be implemented later."
-    # # Validate Ray: Make sure pods are running
-    # kubectl wait --for=condition=Ready pods -n rag-$SHORT_SHA-$_BUILD_ID -l 'component!=continuous-image-puller' --timeout=1200s
-    # kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/ray-cluster-kuberay-head-svc 8262:8265 &
-    # # Wait port-forwarding to take its place
-    # sleep 5s
+    # Validate Ray: Make sure pods are running
+    kubectl wait --for=condition=Ready pods -n rag-$SHORT_SHA-$_BUILD_ID -l 'component!=continuous-image-puller' --timeout=1200s
+    kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/ray-cluster-kuberay-head-svc 8262:8265 &
+    # Wait port-forwarding to take its place
+    sleep 5s
 
-    # # Install Python requirements
-    # apt update
-    # apt install python3-venv --assume-yes
-    # apt install python3-pip --assume-yes
-    # pip install -U "ray[data,train,tune,serve]"
-    # pip install pyyaml requests packaging
+    # Install Python requirements
+    apt update
+    apt install python3-venv --assume-yes
+    apt install python3-pip --assume-yes
+    pip install -U "ray[data,train,tune,serve]"
+    pip install pyyaml requests packaging
 
-    # # Validate Ray: Check dashboard
-    # ray job submit --working-dir ./tests \
-    # --address=http://127.0.0.1:8262 -- python -c "import ray; ray.init(); print(ray.cluster_resources())"
-    # echo "pass" > /workspace/rag_ray_dashboard_result.txt
+    # Validate Ray: Check dashboard
+    ray job submit --working-dir ./tests \
+    --address=http://127.0.0.1:8262 -- python -c "import ray; ray.init(); print(ray.cluster_resources())"
+    echo "pass" > /workspace/rag_ray_dashboard_result.txt
 
-    # # Validate JupyterHub: Get hub url
-    # kubectl get services -n rag-$SHORT_SHA-$_BUILD_ID
-    # kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/proxy-public 9443:80 &
-    # # Wait port-forwarding to take its place
-    # sleep 5s
+    # Validate JupyterHub: Get hub url
+    kubectl get services -n rag-$SHORT_SHA-$_BUILD_ID
+    kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/proxy-public 9443:80 &
+    # Wait port-forwarding to take its place
+    sleep 5s
 
-    # # Validate JupyterHub: Test Hub
-    # cd /workspace/common/modules/jupyter/tests
-    # python3 test_hub.py "127.0.0.1:9443" $_AUTOPILOT_CLUSTER
-    # echo "pass" > /workspace/rag_jupyterhub_test_result.txt
+    # Validate JupyterHub: Test Hub
+    cd /workspace/common/modules/jupyter/tests
+    python3 test_hub.py "127.0.0.1:9443" $_AUTOPILOT_CLUSTER
+    echo "pass" > /workspace/rag_jupyterhub_test_result.txt
 
-    # # Validate RAG: Test rag frontend
-    # kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/rag-frontend 8081:8080 &
-    # # Wait port-forwarding to take its place
-    # sleep 5s
+    # Validate RAG: Test rag frontend
+    kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/rag-frontend 8081:8080 &
+    # Wait port-forwarding to take its place
+    sleep 5s
 
-    # cd /workspace/rag/tests
-    # python3 test_frontend.py "127.0.0.1:8081"
-    # echo "pass" > /workspace/rag_frontend_result.txt
+    cd /workspace/rag/tests
+    python3 test_frontend.py "127.0.0.1:8081"
+    echo "pass" > /workspace/rag_frontend_result.txt
 
-    # cd /workspace/
-    # sed -i "s/<username>/$$KAGGLE_USERNAME/g" ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
-    # sed -i "s/<token>/$$KAGGLE_KEY/g" ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
-    # gsutil cp ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb gs://gke-aieco-rag-$SHORT_SHA-$_BUILD_ID/
-    # kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID $(kubectl get pod -l app=jupyterhub,component=hub -n rag-$SHORT_SHA-$_BUILD_ID -o jsonpath="{.items[0].metadata.name}") -- jupyterhub token admin --log-level=CRITICAL | xargs python3 ./rag/notebook_starter.py
-    # # Wait for jupyterhub to trigger notebook pod startup
-    # sleep 5s
-    # kubectl wait --for=condition=Ready pod/jupyter-admin -n rag-$SHORT_SHA-$_BUILD_ID --timeout=500s
-    # kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- jupyter nbconvert --to script /data/rag-kaggle-ray-sql-interactive.ipynb
-    # kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- ipython /data/rag-kaggle-ray-sql-interactive.py
+    cd /workspace/
+    sed -i "s/<username>/$$KAGGLE_USERNAME/g" ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
+    sed -i "s/<token>/$$KAGGLE_KEY/g" ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
+    gsutil cp ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb gs://gke-aieco-rag-$SHORT_SHA-$_BUILD_ID/
+    kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID $(kubectl get pod -l app=jupyterhub,component=hub -n rag-$SHORT_SHA-$_BUILD_ID -o jsonpath="{.items[0].metadata.name}") -- jupyterhub token admin --log-level=CRITICAL | xargs python3 ./rag/notebook_starter.py
+    # Wait for jupyterhub to trigger notebook pod startup
+    sleep 5s
+    kubectl wait --for=condition=Ready pod/jupyter-admin -n rag-$SHORT_SHA-$_BUILD_ID --timeout=500s
+    kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- jupyter nbconvert --to script /data/rag-kaggle-ray-sql-interactive.ipynb
+    kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- ipython /data/rag-kaggle-ray-sql-interactive.py
 
-    # python3 ./rag/tests/test_rag.py "http://127.0.0.1:8081/prompt"
-    # echo "pass" > /workspace/rag_prompt_result.txt
+    python3 ./rag/tests/test_rag.py "http://127.0.0.1:8081/prompt"
+    echo "pass" > /workspace/rag_prompt_result.txt
   allowFailure: true
   waitFor: ['create rag']
 
@@ -516,20 +516,20 @@ steps:
       exit 1
     fi
 
-    # if [[ $(cat /workspace/rag_jupyterhub_test_result.txt) != "pass" ]]; then
-    #   echo "rag jupyterhub test failed"
-    #   exit 1
-    # fi
+    if [[ $(cat /workspace/rag_jupyterhub_test_result.txt) != "pass" ]]; then
+      echo "rag jupyterhub test failed"
+      exit 1
+    fi
 
-    # if [[ $(cat /workspace/rag_frontend_result.txt) != "pass" ]]; then
-    #   echo "rag frontend test failed"
-    #   exit 1
-    # fi
+    if [[ $(cat /workspace/rag_frontend_result.txt) != "pass" ]]; then
+      echo "rag frontend test failed"
+      exit 1
+    fi
 
-    # if [[ $(cat /workspace/ray_result.txt) != "pass" ]]; then
-    #   echo "rag prompt test failed"
-    #   exit 1
-    # fi
+    if [[ $(cat /workspace/rag_prompt_result.txt) != "pass" ]]; then
+      echo "rag prompt test failed"
+      exit 1
+    fi
 
     if grep -q "Validation failed" /workspace/shipshape_on_cluster.txt; then
       echo "Shipshape on cluster scan validation failed, please check the log. knowledge share slides: go/shipshape-ai-on-gke-slide"
