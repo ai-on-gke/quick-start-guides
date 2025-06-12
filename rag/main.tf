@@ -243,7 +243,6 @@ module "kuberay-cluster" {
   db_region              = local.cloudsql_instance_region
   google_service_account = local.ray_service_account
   disable_network_policy = var.disable_ray_cluster_network_policy
-  use_custom_image       = true
   additional_labels      = var.additional_labels
 
   # Implicit dependency

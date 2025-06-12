@@ -286,7 +286,7 @@ steps:
   - '-c'
   - |
     set -e
-    echo "This is mocked step that should be implemented later."
+
     # Validate Ray: Make sure pods are running
     kubectl wait --for=condition=Ready pods -n rag-$SHORT_SHA-$_BUILD_ID -l 'component!=continuous-image-puller' --timeout=1200s
     kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/ray-cluster-kuberay-head-svc 8262:8265 &
