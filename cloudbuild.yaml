@@ -13,45 +13,53 @@
 # limitations under the License.
 
 steps:
+- id: "clone common-infra"
+  name: "gcr.io/cloud-builders/git"
+  entrypoint: "sh"
+  args:
+  - "-c"
+  - |
+    git clone -b main --single-branch https://github.com/ai-on-gke/common-infra.git /workspace/common-infra
+    mv /workspace/common-infra/common /workspace/common
+  waitFor: ["-"]
+
 - id: "validate platform"
   name: "hashicorp/terraform:latest"
   dir: "/workspace/common/infrastructure/"
-  waitFor: ["-"]
   script: |
     terraform init -no-color
     terraform validate -no-color
+  waitFor: ["clone common-infra"]
 
 - id: "validate ray"
   name: "hashicorp/terraform:latest"
   dir: "/workspace/ray-on-gke/"
-  waitFor: ["validate platform"]
   script: |
     terraform init -no-color
     terraform validate -no-color
+  waitFor: ["validate platform"]
 
 - id: "validate jupyterhub"
   name: "hashicorp/terraform:latest"
   dir: "/workspace/jupyter/"
-  waitFor: ["validate platform"]
   script: |
     terraform init -no-color
     terraform validate -no-color
+  waitFor: ["validate platform"]
 
 - id: "validate rag"
   name: "hashicorp/terraform:latest"
   dir: "/workspace/rag/"
-  waitFor: ["validate platform"]
   script: |
     terraform init -no-color
     terraform validate -no-color
+  waitFor: ["validate platform"]
 
 - id: 'create gke cluster'
   name: "hashicorp/terraform:latest"
   env:
   - "KUBE_LOAD_CONFIG_FILE=false"
   dir: "/workspace/common/infrastructure/"
-  allowFailure: true
-  waitFor: ["validate platform", "validate ray", "validate jupyterhub", "validate rag"]
   entrypoint: 'sh'
   args:
   - '-c'
@@ -72,6 +80,8 @@ steps:
     -var='gpu_pools=[{initial_node_count=2,name="gpu-pool",machine_type="g2-standard-24",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-balanced",accelerator_count=2,accelerator_type="nvidia-l4",gpu_driver_version="DEFAULT",}]' \
     -auto-approve -no-color
     echo "pass" > /workspace/gke_cluster_result.txt
+  allowFailure: true
+  waitFor: ["validate platform", "validate ray", "validate jupyterhub", "validate rag"]
 
 - id: 'Generate Kubeconfig'
   name: 'gcr.io/cloud-builders/gcloud'
@@ -87,8 +97,6 @@ steps:
 
 - id: 'create ray cluster'
   name: "hashicorp/terraform:latest"
-  allowFailure: true
-  waitFor: ['create gke cluster']
   entrypoint: 'sh'
   args:
   - '-c'
@@ -110,21 +118,22 @@ steps:
     -var=enable_gpu=true \
     -auto-approve -no-color
     echo "pass" > /workspace/user_result.txt
+  allowFailure: true
+  waitFor: ['create gke cluster']
 
 - id: "test ray cluster"
   name: "gcr.io/cloud-builders/kubectl"
-  waitFor: ['create ray cluster']
   env:
     - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
-    - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
+    - "CLOUDSDK_CONTAINER_CLUSTER=ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster"
   entrypoint: 'sh'
   args:
   - '-c'
   - |
     set -e
 
-    chmod +x /workspace/common/scripts/ci/wait_for_pods.sh
-    /workspace/common/scripts/ci/wait_for_pods.sh ml-$SHORT_SHA-$_BUILD_ID-ray 3000
+    chmod +x /workspace/scripts/ci/wait_for_pods.sh
+    /workspace/scripts/ci/wait_for_pods.sh ml-$SHORT_SHA-$_BUILD_ID-ray 3000
 
     kubectl wait --all pods -n ml-$SHORT_SHA-$_BUILD_ID-ray --for=condition=Ready --timeout=1200s
     # Ray head's readinessProbe is not probing the head service today. Therefore the wait for ready above is not reliable.
@@ -141,11 +150,10 @@ steps:
     ray job submit \
     --address=http://127.0.0.1:8265 -- python -c "import ray; ray.init(); print(ray.cluster_resources())"
     echo "pass" > /workspace/ray_result.txt
+  waitFor: ['create ray cluster']
 
 - id: 'cleanup ray cluster'
   name: "hashicorp/terraform:latest"
-  allowFailure: true
-  waitFor: ['test ray cluster']
   entrypoint: 'sh'
   args:
   - '-c'
@@ -165,32 +173,16 @@ steps:
     -var=gcs_bucket=gke-aieco-ray-$SHORT_SHA-$_BUILD_ID \
     -var=enable_gpu=true \
     -auto-approve -no-color
+  allowFailure: true
+  waitFor: ['test ray cluster']
 
 - id: 'create jupyterhub'
   name: "hashicorp/terraform:latest"
-  allowFailure: true
-  waitFor: ['create gke cluster']
   entrypoint: 'sh'
   args:
   - '-c'
   - |
     set -e
-
-    apk update && \
-    apk add --no-cache \
-        python3 \
-        py3-pip \
-        py3-virtualenv
-
-    python3 -m venv venv
-    . venv/bin/activate
-    pip install pyyaml requests
-
-    cd /workspace/common/modules/jupyter/tests
-    python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
-    deactivate
-
-    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
 
     cd /workspace/jupyter
     terraform apply \
@@ -203,14 +195,14 @@ steps:
     -var=gcs_bucket=gke-aieco-jupyter-$SHORT_SHA-$_BUILD_ID \
     -auto-approve -no-color
     echo "pass" > /workspace/jupyterhub_tf_result.txt
+  allowFailure: true
+  waitFor: ['create gke cluster']
 
 - id: 'test jupyterhub'
   name: "gcr.io/cloud-builders/kubectl"
-  allowFailure: true
-  waitFor: ['create jupyterhub']
   env:
   - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
-  - "CLOUDSDK_CONTAINER_CLUSTER=ml-373a855--7e5eca7e-cluster"
+  - "CLOUDSDK_CONTAINER_CLUSTER=ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster"
   entrypoint: 'sh'
   args:
   - '-c'
@@ -219,6 +211,7 @@ steps:
 
     kubectl wait --for=condition=Ready pods -n ml-$SHORT_SHA-$_BUILD_ID-jupyter -l 'component!=continuous-image-puller' --timeout=1800s
     kubectl get services -n ml-$SHORT_SHA-$_BUILD_ID-jupyter
+    kubectl -n ml-$SHORT_SHA-$_BUILD_ID-jupyter get secrets hub -o=jsonpath='{.data.values\.yaml}' | base64 -d > /workspace/common/modules/jupyter/jupyter_config/config-selfauth.yaml
     kubectl port-forward -n ml-$SHORT_SHA-$_BUILD_ID-jupyter service/proxy-public 9442:80 &
     # Wait port-forwarding to take its place
     sleep 5s
@@ -231,18 +224,16 @@ steps:
     cd /workspace/common/modules/jupyter/tests
     python3 test_hub.py "127.0.0.1:9442" $_AUTOPILOT_CLUSTER
     echo "pass" > /workspace/jupyterhub_test_result.txt
+  allowFailure: true
+  waitFor: ['create jupyterhub']
 
 - id: 'cleanup jupyterhub'
   name: "hashicorp/terraform:latest"
-  allowFailure: true
-  waitFor: ['test jupyterhub']
   entrypoint: 'sh'
   args:
   - '-c'
   - |
     set -e
-
-    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
 
     cd /workspace/jupyter/
     terraform destroy \
@@ -254,34 +245,17 @@ steps:
     -var=workload_identity_service_account=jupyter-sa-$SHORT_SHA-$_BUILD_ID \
     -var=gcs_bucket=gke-aieco-jupyter-$SHORT_SHA-$_BUILD_ID \
     -auto-approve -no-color
+  allowFailure: true
+  waitFor: ['test jupyterhub']
 
 - id: 'create rag'
   name: "hashicorp/terraform:latest"
-  allowFailure: true
-  waitFor: ['create gke cluster']
   secretEnv: ['KAGGLE_USERNAME', 'KAGGLE_KEY']
   entrypoint: 'sh'
   args:
   - '-c'
   - |
     set -e
-
-    apk update && \
-    apk add --no-cache \
-        python3 \
-        py3-pip \
-        py3-virtualenv
-
-    python3 -m venv venv_rag
-    . venv_rag/bin/activate
-    pip install pyyaml requests
-
-    cd /workspace/common/modules/jupyter/tests
-    python3 change_jupyter_config.py $_AUTOPILOT_CLUSTER
-    deactivate
-
-    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
-    # -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
 
     cd /workspace/rag/
     terraform apply \
@@ -301,11 +275,11 @@ steps:
     -var=cloudsql_instance=pgvector-instance-$SHORT_SHA-$_BUILD_ID \
     -auto-approve -no-color
     echo "pass" > /workspace/rag_tf_result.txt
+  allowFailure: true
+  waitFor: ['create gke cluster']
 
 - id: 'test rag'
   name: "gcr.io/cloud-builders/kubectl"
-  allowFailure: true
-  waitFor: ['create rag']
   secretEnv: ['KAGGLE_USERNAME', 'KAGGLE_KEY']
   entrypoint: 'sh'
   args:
@@ -364,6 +338,8 @@ steps:
 
     # python3 ./rag/tests/test_rag.py "http://127.0.0.1:8081/prompt"
     # echo "pass" > /workspace/rag_prompt_result.txt
+  allowFailure: true
+  waitFor: ['create rag']
 
 - id: 'Generate Kubeconfig For Security Scan'
   name: 'gcr.io/cloud-builders/gcloud'
@@ -443,19 +419,13 @@ steps:
   allowFailure: true
   waitFor: ['Copy metadata']
 
-
 - id: 'cleanup rag'
   name: "hashicorp/terraform:latest"
-  allowFailure: true
-  waitFor: ['Run shipshape on cluster', 'Run Shipshape on helm', 'test rag']
   entrypoint: 'sh'
   args:
   - '-c'
   - |
     set -e
-
-    # -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
-    # -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
 
     cd /workspace/rag/
     terraform destroy \
@@ -474,12 +444,12 @@ steps:
     -var=jupyter_service_account=jupyter-sa-$SHORT_SHA-$_BUILD_ID \
     -var=cloudsql_instance=pgvector-instance-$SHORT_SHA-$_BUILD_ID \
     -auto-approve -no-color
+  allowFailure: true
+  waitFor: ['Run shipshape on cluster', 'Run Shipshape on helm', 'test rag']
 
 - id: 'cleanup gke cluster'
   name: "hashicorp/terraform:latest"
   dir: "/workspace/common/infrastructure/"
-  allowFailure: true
-  waitFor: ['cleanup ray cluster', 'cleanup jupyterhub', 'cleanup rag']
   entrypoint: 'sh'
   args:
   - '-c'
@@ -499,14 +469,18 @@ steps:
     -var='cpu_pools=[{initial_node_count=2,name="cpu-pool",machine_type="n1-standard-16",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-standard",}]' \
     -var='gpu_pools=[{initial_node_count=2,name="gpu-pool",machine_type="g2-standard-24",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-balanced",accelerator_count=2,accelerator_type="nvidia-l4",gpu_driver_version="DEFAULT",}]' \
     -auto-approve -no-color
+  allowFailure: true
+  waitFor: ['cleanup ray cluster', 'cleanup jupyterhub', 'cleanup rag']
 
 - id: 'check result'
   # name: 'gcr.io/$PROJECT_ID/terraform'
-  name: "hashicorp/terraform:latest"
-  entrypoint: 'sh'
+  name: "ubuntu"
+  entrypoint: 'bash'
   args:
   - '-c'
   - |
+    set -e
+
     if [[ $(cat /workspace/gke_cluster_result.txt) != "pass" ]]; then
       echo "gke cluster creation failed"
       exit 1
@@ -556,17 +530,17 @@ steps:
     #   echo "rag prompt test failed"
     #   exit 1
     # fi
- 
+
     if grep -q "Validation failed" /workspace/shipshape_on_cluster.txt; then
       echo "Shipshape on cluster scan validation failed, please check the log. knowledge share slides: go/shipshape-ai-on-gke-slide"
       exit 1
     fi
-    
+
     if grep -q "Validation failed" /workspace/shipshape_on_helm.txt; then
       echo "Shipshape on helm scan validation failed, please check the log. knowledge share slides: go/shipshape-ai-on-gke-slide"
       exit 1
     fi
-
+  allowFailure: false
   waitFor: ['cleanup gke cluster']
 
 substitutions:
