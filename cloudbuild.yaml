@@ -327,6 +327,7 @@ steps:
 
     # Validate JupyterHub: Test Hub
     cd /workspace/common/modules/jupyter/tests
+    kubectl -n rag-$SHORT_SHA-$_BUILD_ID get secrets hub -o=jsonpath='{.data.values\.yaml}' | base64 -d > /workspace/common/modules/jupyter/jupyter_config/config-selfauth.yaml
     python3 test_hub.py "127.0.0.1:9443" $_AUTOPILOT_CLUSTER
     echo "pass" > /workspace/rag_jupyterhub_test_result.txt
 
