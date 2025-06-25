@@ -19,7 +19,7 @@ steps:
   args:
   - "-c"
   - |
-    git clone -b fix-rag-test --single-branch https://github.com/dmitriy-drogovoz-us/common-infra.git /workspace/common-infra
+    git clone -b main --single-branch https://github.com/ai-on-gke/common-infra.git /workspace/common-infra
     mv /workspace/common-infra/common /workspace/common
   waitFor: ["-"]
 
