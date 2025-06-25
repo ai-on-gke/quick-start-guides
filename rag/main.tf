@@ -61,7 +61,7 @@ module "project-services" {
 }
 
 module "infra" {
-  source = "github.com/ai-on-gke/common-infra/common/infrastructure?ref=main"
+  source = "github.com/dmitriy-drogovoz-us/common-infra/common/infrastructure?ref=fix-rag-test"
   count  = var.create_cluster ? 1 : 0
 
   project_id        = var.project_id
@@ -146,21 +146,21 @@ provider "helm" {
 }
 
 module "namespace" {
-  source           = "github.com/ai-on-gke/common-infra/common/modules/kubernetes-namespace?ref=main"
+  source           = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/kubernetes-namespace?ref=fix-rag-test"
   providers        = { helm = helm.rag }
   create_namespace = true
   namespace        = local.kubernetes_namespace
 }
 
 module "gcs" {
-  source      = "github.com/ai-on-gke/common-infra/common/modules/gcs?ref=main"
+  source      = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/gcs?ref=fix-rag-test"
   count       = var.create_gcs_bucket ? 1 : 0
   project_id  = var.project_id
   bucket_name = var.gcs_bucket
 }
 
 module "cloudsql" {
-  source        = "github.com/ai-on-gke/common-infra/common/modules/cloudsql?ref=main"
+  source        = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/cloudsql?ref=fix-rag-test"
   providers     = { kubernetes = kubernetes.rag }
   project_id    = var.project_id
   instance_name = local.cloudsql_instance
@@ -171,7 +171,7 @@ module "cloudsql" {
 }
 
 module "jupyterhub" {
-  source            = "github.com/ai-on-gke/common-infra/common/modules/jupyter?ref=main"
+  source            = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/jupyter?ref=fix-rag-test"
   providers         = { helm = helm.rag, kubernetes = kubernetes.rag }
   namespace         = local.kubernetes_namespace
   project_id        = var.project_id
@@ -182,7 +182,7 @@ module "jupyterhub" {
   autopilot_cluster                 = local.enable_autopilot
   workload_identity_service_account = local.jupyter_service_account
 
-  notebook_image     = "us-central1-docker.pkg.dev/ai-on-gke/rag-on-gke/jupyter-notebook-image"
+  notebook_image     = "us-central1-docker.pkg.dev/dmitriy-drogovoz-us/rag-on-gke/jupyter-notebook-image"
   notebook_image_tag = "sample-public-image-v1.1-rag"
 
   db_secret_name         = module.cloudsql.db_secret_name
@@ -220,7 +220,7 @@ module "kuberay-workload-identity" {
 }
 
 module "kuberay-monitoring" {
-  source                          = "github.com/ai-on-gke/common-infra/common/modules/kuberay-monitoring?ref=main"
+  source                          = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/kuberay-monitoring?ref=fix-rag-test"
   providers                       = { helm = helm.rag, kubernetes = kubernetes.rag }
   project_id                      = var.project_id
   autopilot_cluster               = local.enable_autopilot
@@ -232,7 +232,7 @@ module "kuberay-monitoring" {
 }
 
 module "kuberay-cluster" {
-  source                 = "github.com/ai-on-gke/common-infra/common/modules/kuberay-cluster?ref=main"
+  source                 = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/kuberay-cluster?ref=fix-rag-test"
   providers              = { helm = helm.rag, kubernetes = kubernetes.rag }
   project_id             = var.project_id
   namespace              = local.kubernetes_namespace
@@ -267,7 +267,7 @@ module "kuberay-cluster" {
 }
 
 module "inference-server" {
-  source            = "github.com/ai-on-gke/common-infra/common/modules/inference-service?ref=main"
+  source            = "github.com/dmitriy-drogovoz-us/common-infra/common/modules/inference-service?ref=fix-rag-test"
   providers         = { kubernetes = kubernetes.rag }
   namespace         = local.kubernetes_namespace
   additional_labels = var.additional_labels
