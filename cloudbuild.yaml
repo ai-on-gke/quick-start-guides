@@ -442,7 +442,7 @@ steps:
   - '-c'
   - |
     set -e
-    exit 1
+
     cd /workspace/rag/
     terraform destroy \
     -var-file=workloads.tfvars \
@@ -471,7 +471,7 @@ steps:
   - '-c'
   - |
     set -e
-    exit 1
+
     echo "cleanup gke cluster step!"
     terraform destroy \
     -var-file=tfvars_tests/standard-gke-public.platform.tfvars \
