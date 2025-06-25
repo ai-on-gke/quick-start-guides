@@ -349,7 +349,7 @@ steps:
     sleep 5s
     kubectl wait --for=condition=Ready pod/jupyter-admin -n rag-$SHORT_SHA-$_BUILD_ID --timeout=500s
     kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- jupyter nbconvert --to script /data/rag-kaggle-ray-sql-interactive.ipynb
-    kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- pip install ray==2.44.1
+    # kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- pip install ray==2.44.1
     kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- ipython /data/rag-kaggle-ray-sql-interactive.py
 
     python3 ./rag/tests/test_rag.py "http://127.0.0.1:8081/prompt"

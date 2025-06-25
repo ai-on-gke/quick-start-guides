@@ -244,6 +244,7 @@ module "kuberay-cluster" {
   google_service_account = local.ray_service_account
   disable_network_policy = var.disable_ray_cluster_network_policy
   additional_labels      = var.additional_labels
+  use_custom_image       = true
 
   # Implicit dependency
   db_secret_name = module.cloudsql.db_secret_name
