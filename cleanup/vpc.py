@@ -78,7 +78,7 @@ def delete_network_resources(project_id, network) -> None:
             print(f"({network.name}) Subnetwork {subnet_name} is deleted")
         except Exception as e:
             print(f"({network.name}) Error deleting subnetwork {subnet_name}: {e}")
-
+    
     # 2. Remove peering
     print(f"({network.name}) Deleting peering")
     try:
@@ -96,12 +96,12 @@ def delete_network_resources(project_id, network) -> None:
     except Exception as e:
         print(f"({network.name}) Error deleting peering: {e}")
 
-
+    
     # 3. Delete Global Addresses
     address_list_request = compute_v1.ListGlobalAddressesRequest(project=project_id)
     addresses = global_address_client.list(request=address_list_request)
     filtered_addresses = list(filter(
-        lambda address: address.network.split("/")[-1] == network.name,
+        lambda address: address.network.split("/")[-1] == network.name, 
         addresses
     ))
     print(f"({network.name}) Prepare to delete global addresses: {len(filtered_addresses)}")
@@ -109,7 +109,7 @@ def delete_network_resources(project_id, network) -> None:
         print(f"({network.name}) Deleting global address: {address.name}")
         try:
             delete_address_request = compute_v1.DeleteGlobalAddressRequest(
-                project=project_id,
+                project=project_id, 
                 address=address.name
             )
             address_deletion = global_address_client.delete(request=delete_address_request)
@@ -121,12 +121,12 @@ def delete_network_resources(project_id, network) -> None:
             print(f"({network.name}) Global address {address.name} is deleted")
         except Exception as e:
             print(f"({network.name}) Error deleting global address {address.name}: {e}")
-
+    
     # 4. Delete Global Routes
     list_routes_request = compute_v1.ListRoutesRequest(project=project_id)
     routes = route_client.list(request=list_routes_request)
     filtered_routes = list(filter(
-        lambda route: route.network.split("/")[-1] == network.name,
+        lambda route: route.network.split("/")[-1] == network.name, 
         routes
     ))
     print(f"({network.name}) Global routes to delete: {len(filtered_routes)}")
@@ -134,7 +134,7 @@ def delete_network_resources(project_id, network) -> None:
         print(f"({network.name}) Deleting route: {route.name}")
         try:
             delete_route_request = compute_v1.DeleteRouteRequest(
-                project=project_id,
+                project=project_id, 
                 route=route.name
             )
             route_deletion = route_client.delete(request=delete_route_request)
@@ -159,7 +159,7 @@ def delete_network_resources(project_id, network) -> None:
         print(f"({network.name}) Deleting firewall rule: {firewall.name}")
         try:
             delete_firewall_request = compute_v1.DeleteFirewallRequest(
-                project=project_id,
+                project=project_id, 
                 firewall=firewall.name
             )
             firewall_rules_deletion = firewall_client.delete(request=delete_firewall_request)
@@ -176,7 +176,7 @@ def delete_network_resources(project_id, network) -> None:
     print(f"({network.name}) Delete the network: {network.name}")
     try:
         delete_network_request = compute_v1.DeleteNetworkRequest(
-            project=project_id,
+            project=project_id, 
             network=network.name
         )
         network_deletion = network_client.delete(request=delete_network_request)

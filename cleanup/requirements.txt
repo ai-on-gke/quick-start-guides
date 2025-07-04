@@ -2,3 +2,7 @@ functions-framework==3.*
 google-cloud-compute
 google-cloud-container
 google-cloud-iam
+google-api-python-client
+oauth2client
+google-cloud-storage
+google-cloud-resource-manager
