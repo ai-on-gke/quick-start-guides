@@ -6,13 +6,13 @@ from datetime import datetime, timedelta
 
 def filter_clusters(clusters, hours):
     ci_cluster = lambda name: re.match(r".*ml-.*-cluster$", name)
-
+    
     def check_old_create_time(create_time):
         create_datetime = datetime.fromisoformat(create_time)
         now_datetime = datetime.now(create_datetime.tzinfo)
         time_difference = now_datetime - create_datetime
         return time_difference > timedelta(hours=hours)
-
+    
     ci_clusters = list(filter(lambda cluster: ci_cluster(cluster.name), clusters))
     save_ci_clusters = list(filter(lambda cluster: not check_old_create_time(cluster.create_time), ci_clusters))
     sas_to_save = [cluster.node_config.service_account for cluster in save_ci_clusters]
@@ -59,5 +59,5 @@ def run(project_id: str, hours: int):
         )
         response = gke_client.list_clusters(request=request)
         clusters = filter_clusters(response.clusters, hours)
-
+    
     return sas_to_save

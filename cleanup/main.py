@@ -1,5 +1,5 @@
 import functions_framework
-import vpc, gke, sa
+import vpc, gke, sa, vertex, sql, gcs, iam
 
 
 @functions_framework.http
@@ -18,4 +18,8 @@ def vpc_cleanup(request):
     sas_to_save = gke.run(project_id, hours)
     sa.run(project_id, sas_to_save)
     vpc.run(project_id, hours)
+    vertex.run(project_id)
+    sql.run(project_id)
+    gcs.run(hours)
+    iam.run(project_id)
     return "done"
