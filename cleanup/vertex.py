@@ -65,8 +65,9 @@ def run(
     parent = f"projects/{project_id}"
     request = ListRolesRequest(parent=parent, show_deleted=show_deleted, view=role_view)
     roles = client.list_roles(request)
+    role_template = "VertexAI Tutorial Custom Role"
     for page in roles.pages:
         for role in page.roles:
-            if role.title == "VertexAI Tutorial Custom Role":
+            if role.title[:len(role_template)] == role_template:
                 delete_role(project_id, role.name)
     print("The role deletion is completed.")
