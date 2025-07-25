@@ -13,6 +13,7 @@ def check_bucket_name(bucket_name):
         "gke-aieco-ray-",
         "gke-aieco-jupyter-",
         "gke-aieco-rag-",
+        "gke-aieco-flowise-",
     ]
     for bucket_prefix in bucket_prefixes:
         if bucket_name.startswith(bucket_prefix):
