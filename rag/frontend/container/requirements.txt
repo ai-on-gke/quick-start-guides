@@ -16,7 +16,7 @@ Flask==3.0.0
 gunicorn==23.0.0
 Werkzeug==3.0.6
 langchain==0.3.14
-langchain-community==0.3.14
+langchain-community==0.3.27
 sentence-transformers==2.5.1
 text_generation==0.6.1
 google-cloud-dlp==3.12.2
