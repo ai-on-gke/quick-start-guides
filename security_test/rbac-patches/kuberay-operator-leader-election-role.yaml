@@ -1,0 +1,35 @@
+# Corrected Role for kuberay-operator-leader-election (namespace: gke-ray-system).
+#
+# Changes from the addon-installed default:
+#   - configmaps: mutating verbs (update, patch, delete) scoped to the named lock object
+#     "kuberay-operator-lock"; create remains unrestricted so the lock can be created
+#     on first start
+#   - configmaps/status: removed entirely (sub-resource access is disallowed by policy
+#     and not required for leader election)
+#   - coordination.k8s.io/leases: same resourceName scoping pattern as configmaps
+#
+# Apply after the GKE Ray Addon installs the Role to enforce tighter permissions:
+#   kubectl apply -f security_test/rbac-patches/kuberay-operator-leader-election-role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: kuberay-operator-leader-election
+  namespace: gke-ray-system
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "create"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  resourceNames: ["kuberay-operator-lock"]
+  verbs: ["update", "patch", "delete"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "list", "watch", "create"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  resourceNames: ["kuberay-operator-lock"]
+  verbs: ["update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
