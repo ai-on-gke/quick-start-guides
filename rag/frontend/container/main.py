@@ -121,9 +121,12 @@ def handlePrompt():
             "user_prompt": user_prompt
         })
         if 'nlpFilterLevel' in data:
-            if nlp_filter.is_content_inappropriate(response['text'], data['nlpFilterLevel']):
-                response['text'] = 'The response is deemed inappropriate for display.'
-                return {'response': response}
+            try:
+                if nlp_filter.is_content_inappropriate(response['text'], data['nlpFilterLevel']):
+                    response['text'] = 'The response is deemed inappropriate for display.'
+            except Exception as nlp_err:
+                log.warn(f"NLP filter error (proceeding without filtering): {nlp_err}")
+                warnings.append(f"NLP filter unavailable: {str(nlp_err)}")
         if 'inspectTemplate' in data and 'deidentifyTemplate' in data:
             inspect_template_path = data['inspectTemplate']
             deidentify_template_path = data['deidentifyTemplate']
