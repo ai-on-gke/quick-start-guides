@@ -198,6 +198,38 @@ steps:
   allowFailure: true
   waitFor: ['create gke cluster']
 
+# TEMPORARY diagnostic: runs in parallel with 'create jupyterhub' and polls pod
+# status throughout helm's --wait, so we capture the pod that never goes Ready
+# before helm's cleanup_on_fail removes the release. Writes no result file; remove
+# once the jupyterhub timeout is understood.
+- id: 'diagnose jupyterhub'
+  name: "gcr.io/cloud-builders/kubectl"
+  env:
+  - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
+  - "CLOUDSDK_CONTAINER_CLUSTER=ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster"
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set +e
+    NS=ml-$SHORT_SHA-$_BUILD_ID-jupyter
+    for i in $$(seq 1 30); do
+      echo "===== [diag] $$(date -u) ns=$$NS iter=$$i ====="
+      kubectl get pods -n "$$NS" -o wide 2>&1 || echo "[diag] namespace not ready yet"
+      for p in $$(kubectl get pods -n "$$NS" --no-headers 2>/dev/null | awk '{split($$2,a,"/"); if (a[1]!=a[2] || $$3!~/Running|Completed/) print $$1}'); do
+        echo "----- [diag] describe $$p -----"
+        kubectl describe pod "$$p" -n "$$NS" 2>&1 | tail -45
+        echo "----- [diag] logs $$p -----"
+        kubectl logs "$$p" -n "$$NS" --all-containers --tail=25 2>&1
+      done
+      echo "----- [diag] recent events -----"
+      kubectl get events -n "$$NS" --sort-by=.lastTimestamp 2>/dev/null | tail -25
+      sleep 30
+    done
+    echo "[diag] done polling"
+  allowFailure: true
+  waitFor: ['create gke cluster']
+
 - id: 'test jupyterhub'
   name: "gcr.io/cloud-builders/kubectl"
   env:
