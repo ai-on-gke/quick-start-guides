@@ -420,6 +420,11 @@ variable "disable_ray_cluster_network_policy" {
   default     = true
 }
 
+variable "frontend_image" {
+  type        = string
+  description = "Docker image for the RAG frontend. Build the image from rag/frontend/container/ and push it to your registry before running terraform apply."
+}
+
 variable "create_network" {
   description = "Create the VPC specified by network_name/subnetwork_name"
   type        = bool

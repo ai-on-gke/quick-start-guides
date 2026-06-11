@@ -150,3 +150,8 @@ variable "members_allowlist" {
   type    = list(string)
   default = []
 }
+
+variable "frontend_image" {
+  type        = string
+  description = "Docker image for the RAG frontend. Build the image from frontend/container/ and push it to your registry before running terraform apply."
+}
