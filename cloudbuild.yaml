@@ -76,7 +76,7 @@ steps:
     -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
     -var=autopilot_cluster=$_AUTOPILOT_CLUSTER \
     -var=cluster_location=$_REGION \
-    -var='cpu_pools=[{initial_node_count=2,name="cpu-pool",machine_type="n1-standard-16",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-standard",}]' \
+    -var='cpu_pools=[{initial_node_count=2,name="cpu-pool",machine_type="n1-standard-16",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-standard",node_locations="$_REGION-a",}]' \
     -var='gpu_pools=[{initial_node_count=1,name="gpu-pool",machine_type="n1-standard-16",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-balanced",accelerator_count=2,accelerator_type="nvidia-tesla-t4",gpu_driver_version="DEFAULT",node_locations="$_REGION-a",}]' \
     -auto-approve -no-color
     echo "pass" > /workspace/gke_cluster_result.txt
@@ -516,7 +516,7 @@ steps:
     -var=cluster_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-cluster \
     -var=autopilot_cluster=$_AUTOPILOT_CLUSTER \
     -var=cluster_location=$_REGION \
-    -var='cpu_pools=[{initial_node_count=2,name="cpu-pool",machine_type="n1-standard-16",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-standard",}]' \
+    -var='cpu_pools=[{initial_node_count=2,name="cpu-pool",machine_type="n1-standard-16",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-standard",node_locations="$_REGION-a",}]' \
     -var='gpu_pools=[{initial_node_count=1,name="gpu-pool",machine_type="n1-standard-16",autoscaling=true,min_count=1,max_count=3,disk_size_gb=100,disk_type="pd-balanced",accelerator_count=2,accelerator_type="nvidia-tesla-t4",gpu_driver_version="DEFAULT",node_locations="$_REGION-a",}]' \
     -auto-approve -no-color
   allowFailure: true
