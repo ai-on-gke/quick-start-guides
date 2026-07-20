@@ -95,13 +95,18 @@ steps:
     deactivate
 
     cd /workspace/rag/
-    # The inference deployment requests GPUs that this cluster intentionally does not have, so its
-    # pod stays Pending. Shipshape scans the Deployment spec rather than the running pod, so skip
-    # the rollout wait and let the resource be created for scanning.
+    # Shipshape scans Deployment specs, not running pods, so we don't need workloads to fully roll
+    # out. Skip the rollout wait on the two deployments that can't reach Ready without a GPU:
+    #  - inference (mistral) requests GPUs this CPU-only cluster intentionally lacks (pod stays Pending)
+    #  - the frontend times out at 2/3 replicas in CI; the spec is what matters for scanning
     INFERENCE_TF=/workspace/rag/.terraform/modules/inference-server/common/modules/inference-service/main.tf
     sed -i 's|^resource "kubernetes_deployment" "inference_deployment" {|resource "kubernetes_deployment" "inference_deployment" {\n  wait_for_rollout = false|' \
       "$$INFERENCE_TF"
     grep -q "^  wait_for_rollout = false" "$$INFERENCE_TF" || { echo "ERROR: failed to patch wait_for_rollout into $$INFERENCE_TF"; exit 1; }
+    FRONTEND_TF=/workspace/rag/frontend/main.tf
+    sed -i 's|^resource "kubernetes_deployment" "rag_frontend_deployment" {|resource "kubernetes_deployment" "rag_frontend_deployment" {\n  wait_for_rollout = false|' \
+      "$$FRONTEND_TF"
+    grep -q "^  wait_for_rollout = false" "$$FRONTEND_TF" || { echo "ERROR: failed to patch wait_for_rollout into $$FRONTEND_TF"; exit 1; }
     terraform apply \
     -var-file=workloads.tfvars \
     -var=network_name=sec-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
