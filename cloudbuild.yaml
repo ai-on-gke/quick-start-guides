@@ -126,7 +126,7 @@ steps:
   env:
     - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
     - "CLOUDSDK_CONTAINER_CLUSTER=ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster"
-  entrypoint: 'sh'
+  entrypoint: 'bash'
   args:
   - '-c'
   - |
@@ -203,7 +203,7 @@ steps:
   env:
   - "CLOUDSDK_COMPUTE_ZONE=${_REGION}"
   - "CLOUDSDK_CONTAINER_CLUSTER=ml-${SHORT_SHA}-${_PR_NUMBER}-${_BUILD_ID}-cluster"
-  entrypoint: 'sh'
+  entrypoint: 'bash'
   args:
   - '-c'
   - |
@@ -222,6 +222,10 @@ steps:
     pip install pyyaml requests packaging
 
     cd /workspace/common/modules/jupyter/tests
+    # Patch: Tornado 6.4 (JupyterHub chart 3.3.8) intermittently rejects _xsrf sent as a URL
+    # query param. Move it into the POST body instead, which is the stable supported path.
+    sed -i '/params=auth_params,/d' test_hub.py
+    sed -i 's/data={"username": username, "password": password},/data={"username": username, "password": password, **auth_params},/' test_hub.py
     python3 test_hub.py "127.0.0.1:9442" $_AUTOPILOT_CLUSTER
     echo "pass" > /workspace/jupyterhub_test_result.txt
   allowFailure: true
@@ -311,6 +315,12 @@ steps:
     deactivate
 
     cd /workspace/rag/
+    # Increase Ray head ephemeral storage from 3Gi to 10Gi so runtime_env pip installs
+    # (torch, transformers, etc.) don't evict the head pod on standard clusters.
+    sed -i 's/ephemeral-storage: 3Gi/ephemeral-storage: 10Gi/g' \
+      /workspace/rag/.terraform/modules/kuberay-cluster/common/modules/kuberay-cluster/values.yaml
+    sed -i 's/gke-gcsfuse\/ephemeral-storage-limit: 3Gi/gke-gcsfuse\/ephemeral-storage-limit: 5Gi/' \
+      /workspace/rag/.terraform/modules/kuberay-cluster/common/modules/kuberay-cluster/values.yaml
     terraform apply \
     -var-file=workloads.tfvars \
     -var=network_name=ml-$SHORT_SHA-$_PR_NUMBER-$_BUILD_ID-$_AUTOPILOT_CLUSTER  \
@@ -335,7 +345,7 @@ steps:
 - id: 'test rag'
   name: "gcr.io/cloud-builders/kubectl"
   secretEnv: ['KAGGLE_USERNAME', 'KAGGLE_KEY']
-  entrypoint: 'sh'
+  entrypoint: 'bash'
   args:
   - '-c'
   - |
@@ -359,6 +369,19 @@ steps:
     --address=http://127.0.0.1:8262 -- python -c "import ray; ray.init(); print(ray.cluster_resources())"
     echo "pass" > /workspace/rag_ray_dashboard_result.txt
 
+    # Trigger GPU worker autoscaling in background so it is ready by the time the notebook runs.
+    # The KubeRay cluster starts with 0 GPU workers (minReplicas=0); the first GPU request causes
+    # autoscaler to cold-start a worker pod which can take 10-15 min (image pull + Ray init).
+    # Running this concurrently with the JupyterHub / frontend checks saves that wall-clock time.
+    # Note: heredoc cannot be used here because unindented content breaks YAML block scalar parsing.
+    echo "import ray" > /tmp/gpu_warmup.py
+    echo "ray.init()" >> /tmp/gpu_warmup.py
+    echo "def warmup(): return True" >> /tmp/gpu_warmup.py
+    echo "warmup_r = ray.remote(num_gpus=1)(warmup)" >> /tmp/gpu_warmup.py
+    echo "print('GPU worker ready:', ray.get(warmup_r.remote()))" >> /tmp/gpu_warmup.py
+    ray job submit --working-dir /tmp --address=http://127.0.0.1:8262 -- python gpu_warmup.py &
+    GPU_WARMUP_PID=$$!
+
     # Validate JupyterHub: Get hub url
     kubectl get services -n rag-$SHORT_SHA-$_BUILD_ID
     kubectl port-forward -n rag-$SHORT_SHA-$_BUILD_ID service/proxy-public 9443:80 &
@@ -368,6 +391,9 @@ steps:
     # Validate JupyterHub: Test Hub
     cd /workspace/common/modules/jupyter/tests
     kubectl -n rag-$SHORT_SHA-$_BUILD_ID get secrets hub -o=jsonpath='{.data.values\.yaml}' | base64 -d > /workspace/common/modules/jupyter/jupyter_config/config-selfauth.yaml
+    # Same Tornado 6.4 XSRF patch as in step 11 (idempotent if already applied)
+    sed -i '/params=auth_params,/d' test_hub.py
+    sed -i 's/data={"username": username, "password": password},/data={"username": username, "password": password, **auth_params},/' test_hub.py
     python3 test_hub.py "127.0.0.1:9443" $_AUTOPILOT_CLUSTER
     echo "pass" > /workspace/rag_jupyterhub_test_result.txt
 
@@ -380,16 +406,25 @@ steps:
     python3 test_frontend.py "127.0.0.1:8081"
     echo "pass" > /workspace/rag_frontend_result.txt
 
+    # Wait for the GPU worker warm-up job to finish before running the notebook.
+    # Capture the status via || so the step's `set -e` doesn't abort here: a failed warm-up is a
+    # warning, not a failure, since the notebook can still trigger autoscaling itself (just slower).
+    WARMUP_STATUS=0
+    wait $$GPU_WARMUP_PID || WARMUP_STATUS=$$?
+    if [ $$WARMUP_STATUS -ne 0 ]; then
+      echo "WARNING: GPU warm-up failed with status $$WARMUP_STATUS, notebook may be slow or fail"
+    fi
+
     cd /workspace/
     sed -i "s/<username>/$$KAGGLE_USERNAME/g" ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
     sed -i "s/<token>/$$KAGGLE_KEY/g" ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
     gcloud storage cp ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb gs://gke-aieco-rag-$SHORT_SHA-$_BUILD_ID/
-    kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID $(kubectl get pod -l app=jupyterhub,component=hub -n rag-$SHORT_SHA-$_BUILD_ID -o jsonpath="{.items[0].metadata.name}") -- jupyterhub token admin --log-level=CRITICAL | xargs python3 ./rag/notebook_starter.py
+    kubectl exec -i -n rag-$SHORT_SHA-$_BUILD_ID $(kubectl get pod -l app=jupyterhub,component=hub -n rag-$SHORT_SHA-$_BUILD_ID -o jsonpath="{.items[0].metadata.name}") -- jupyterhub token admin --log-level=CRITICAL | xargs python3 ./rag/notebook_starter.py
     # Wait for jupyterhub to trigger notebook pod startup
     sleep 5s
     kubectl wait --for=condition=Ready pod/jupyter-admin -n rag-$SHORT_SHA-$_BUILD_ID --timeout=500s
-    kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- jupyter nbconvert --to script /data/rag-kaggle-ray-sql-interactive.ipynb
-    kubectl exec -it -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- ipython /data/rag-kaggle-ray-sql-interactive.py
+    kubectl exec -i -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- jupyter nbconvert --to script /data/rag-kaggle-ray-sql-interactive.ipynb
+    kubectl exec -i -n rag-$SHORT_SHA-$_BUILD_ID jupyter-admin -c notebook -- ipython /data/rag-kaggle-ray-sql-interactive.py
 
     python3 ./rag/tests/test_rag.py "http://127.0.0.1:8081/prompt"
     echo "pass" > /workspace/rag_prompt_result.txt
