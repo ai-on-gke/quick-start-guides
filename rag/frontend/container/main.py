@@ -124,6 +124,7 @@ def handlePrompt():
             try:
                 if nlp_filter.is_content_inappropriate(response['text'], data['nlpFilterLevel']):
                     response['text'] = 'The response is deemed inappropriate for display.'
+                    return {'response': response}
             except Exception as nlp_err:
                 log.warn(f"NLP filter error (proceeding without filtering): {nlp_err}")
                 warnings.append(f"NLP filter unavailable: {str(nlp_err)}")

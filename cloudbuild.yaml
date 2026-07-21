@@ -366,8 +366,14 @@ steps:
     python3 test_frontend.py "127.0.0.1:8081"
     echo "pass" > /workspace/rag_frontend_result.txt
 
-    # Wait for the GPU worker warm-up job to finish before running the notebook
-    wait $$GPU_WARMUP_PID || echo "GPU warm-up exited with status $$? (continuing)"
+    # Wait for the GPU worker warm-up job to finish before running the notebook.
+    # Capture the status via || so the step's `set -e` doesn't abort here: a failed warm-up is a
+    # warning, not a failure, since the notebook can still trigger autoscaling itself (just slower).
+    WARMUP_STATUS=0
+    wait $$GPU_WARMUP_PID || WARMUP_STATUS=$$?
+    if [ $$WARMUP_STATUS -ne 0 ]; then
+      echo "WARNING: GPU warm-up failed with status $$WARMUP_STATUS, notebook may be slow or fail"
+    fi
 
     cd /workspace/
     sed -i "s/<username>/$$KAGGLE_USERNAME/g" ./rag/example_notebooks/rag-kaggle-ray-sql-interactive.ipynb
