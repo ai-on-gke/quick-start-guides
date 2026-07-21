@@ -72,6 +72,25 @@ steps:
   allowFailure: true
   waitFor: ["validate platform", "validate rag"]
 
+- id: 'build frontend image'
+  name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--platform'
+  - 'linux/amd64'
+  - '-t'
+  - 'gcr.io/$PROJECT_ID/rag-frontend:$SHORT_SHA'
+  - '.'
+  dir: '/workspace/rag/frontend/container'
+  waitFor: ['clone common-infra']
+
+- id: 'push frontend image'
+  name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'push'
+  - 'gcr.io/$PROJECT_ID/rag-frontend:$SHORT_SHA'
+  waitFor: ['build frontend image']
+
 - id: 'create rag'
   name: "hashicorp/terraform:latest"
   entrypoint: 'sh'
@@ -122,10 +141,11 @@ steps:
     -var=rag_service_account=rag-sa-4-sec-$SHORT_SHA-$_BUILD_ID \
     -var=jupyter_service_account=jupyter-sa-4-sec-$SHORT_SHA-$_BUILD_ID \
     -var=cloudsql_instance=pgvector-sec-$SHORT_SHA-$_BUILD_ID \
+    -var=frontend_image=gcr.io/$PROJECT_ID/rag-frontend:$SHORT_SHA \
     -auto-approve -no-color
     echo "pass" > /workspace/rag_tf_result.txt
   allowFailure: true
-  waitFor: ['create gke cluster']
+  waitFor: ['create gke cluster', 'push frontend image']
 
 - id: 'Generate Kubeconfig For Security Scan'
   name: 'gcr.io/cloud-builders/gcloud'
@@ -226,6 +246,7 @@ steps:
     -var=rag_service_account=rag-sa-4-sec-$SHORT_SHA-$_BUILD_ID \
     -var=jupyter_service_account=jupyter-sa-4-sec-$SHORT_SHA-$_BUILD_ID \
     -var=cloudsql_instance=pgvector-sec-$SHORT_SHA-$_BUILD_ID \
+    -var=frontend_image=gcr.io/$PROJECT_ID/rag-frontend:$SHORT_SHA \
     -auto-approve -no-color
   allowFailure: true
   waitFor: ['Run shipshape on cluster', 'Run Shipshape on helm']
