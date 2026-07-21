@@ -29,5 +29,8 @@ WORKDIR /workspace/frontend
 
 ENV PYTHONPATH=/packages
 ENV HF_HOME=/tmp/hf-cache
+# The root filesystem is read-only, so __pycache__ writes next to modules would fail on every
+# import. Skip them explicitly rather than retrying and failing.
+ENV PYTHONDONTWRITEBYTECODE=1
 
 CMD ["main.py"]

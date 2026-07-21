@@ -122,14 +122,11 @@ resource "kubernetes_deployment" "rag_frontend_deployment" {
             read_only  = true
           }
 
+          # Writable scratch for the read-only root filesystem. The HF cache (HF_HOME=/tmp/hf-cache)
+          # lives under this same volume, so its size is bounded by the limit below.
           volume_mount {
             name       = "tmp-dir"
             mount_path = "/tmp"
-          }
-
-          volume_mount {
-            name       = "hf-cache"
-            mount_path = "/tmp/hf-cache"
           }
 
           env {
@@ -180,12 +177,11 @@ resource "kubernetes_deployment" "rag_frontend_deployment" {
 
         volume {
           name = "tmp-dir"
-          empty_dir {}
-        }
-
-        volume {
-          name = "hf-cache"
-          empty_dir {}
+          empty_dir {
+            # Bounds scratch + the downloaded embedding model (intfloat/multilingual-e5-small,
+            # ~500Mi) so a pod cannot fill the node's disk.
+            size_limit = "2Gi"
+          }
         }
 
         container {

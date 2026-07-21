@@ -259,7 +259,7 @@ steps:
       --region=$_REGION \
       --project=$PROJECT_ID \
       --format="value(config.serviceAccount)" | sort -u | while read sa; do
-        echo "Granting storage.objectViewer to $sa"
+        echo "Granting artifactregistry.reader to $sa"
         gcloud projects add-iam-policy-binding $PROJECT_ID \
           --member="serviceAccount:${sa}" \
           --role="roles/artifactregistry.reader" \

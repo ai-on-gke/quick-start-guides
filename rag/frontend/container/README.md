@@ -38,9 +38,10 @@ gcloud builds submit \
 After pushing, update `workloads.tfvars`:
 
 ```hcl
-frontend_image = "<REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO>/rag-frontend:latest"
-# Or with digest for pinned supply-chain compliance:
-# frontend_image = "<REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO>/rag-frontend@sha256:<digest>"
+# Pin by digest so the deployed image cannot change underneath you:
+frontend_image = "<REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO>/rag-frontend@sha256:<DIGEST>"
+# A mutable tag also works for quick local testing, but is not recommended outside of it:
+# frontend_image = "<REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO>/rag-frontend:latest"
 ```
 
 To get the digest after pushing:
@@ -49,3 +50,16 @@ To get the digest after pushing:
 docker inspect --format='{{index .RepoDigests 0}}' \
   <REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO>/rag-frontend:latest
 ```
+
+## Notes
+
+- **Embedding model cache.** The container runs with a read-only root filesystem and writes the
+  Hugging Face cache to `/tmp/hf-cache`, backed by an `emptyDir`. That cache does not survive a pod
+  restart, and each replica downloads its own copy of the embedding model
+  (`intfloat/multilingual-e5-small`, ~500Mi) on first request. This keeps the quick-start simple; for
+  a longer-lived or larger-scale deployment, back the cache with a `PersistentVolumeClaim` or bake
+  the model into the image instead.
+- **Registry.** The commands above use Artifact Registry (`<REGION>-docker.pkg.dev`), which is what
+  you should use for your own deployments. The CI pipeline in `cloudbuild.yaml` pushes to
+  `gcr.io/$PROJECT_ID/rag-frontend` instead — that is a throwaway image built per-run for testing
+  only, and is not the recommended path for users.
