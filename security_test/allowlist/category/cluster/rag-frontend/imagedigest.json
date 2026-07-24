@@ -14,21 +14,5 @@
       "namespace": ".*",
       "version": "v1"
     }
-  },
-  {
-    "details": {
-      "@type": "type.googleapis.com/google.internal.kubernetes.security.validation.v1.ContainerDetails",
-      "containerName": "rag-frontend",
-      "image": "gcr.io/ai-on-gke-qss/rag-frontend"
-    },
-    "message": "container \"rag-frontend\" in Deployment \"rag-frontend\" has an image \"gcr.io/ai-on-gke-qss/rag-frontend\" with no digest; valid image format: image[:tag]@sha256:<digest>",
-    "policyName": "imagedigest",
-    "resourceKey": {
-      "group": "apps",
-      "kind": "Deployment",
-      "name": "rag-frontend",
-      "namespace": ".*",
-      "version": "v1"
-    }
   }
 ]
