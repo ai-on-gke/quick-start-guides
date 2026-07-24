@@ -3,9 +3,9 @@
     "details": {
       "@type": "type.googleapis.com/google.internal.kubernetes.security.validation.v1.ContainerDetails",
       "containerName": "rag-frontend",
-      "image": "gcr.io/ai-on-gke-qss/rag-frontend"
+      "image": "gcr.io/ai-on-gke-qss/rag-frontend@sha256:"
     },
-    "message": "container \"rag-frontend\" in Deployment \"rag-frontend\" has an image \"gcr.io/ai-on-gke-qss/rag-frontend\" without SBOM. See: go/gke-anthos-sbom-requirement for more details",
+    "message": "container \"rag-frontend\" in Deployment \"rag-frontend\" has an image \"gcr.io/ai-on-gke-qss/rag-frontend@sha256:\" without SBOM. See: go/gke-anthos-sbom-requirement for more details",
     "policyName": "sbom",
     "resourceKey": {
       "group": "apps",

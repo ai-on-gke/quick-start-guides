@@ -2,10 +2,10 @@
   {
     "details": {
       "@type": "type.googleapis.com/google.internal.kubernetes.security.validation.v1.ContainerDetails",
-      "image": "gcr.io/ai-on-gke-qss/rag-frontend",
+      "image": "gcr.io/ai-on-gke-qss/rag-frontend@sha256:",
       "containerName": "rag-frontend"
     },
-    "message": "container \"rag-frontend\" in Deployment \"rag-frontend\" has an image \"gcr.io/ai-on-gke-qss/rag-frontend\" with an invalid path. See go/gke-shipshape#imagepath for valid image paths.",
+    "message": "container \"rag-frontend\" in Deployment \"rag-frontend\" has an image \"gcr.io/ai-on-gke-qss/rag-frontend@sha256:\" with an invalid path. See go/gke-shipshape#imagepath for valid image paths.",
     "policyName": "imagepath",
     "resourceKey": {
       "group": "apps",
