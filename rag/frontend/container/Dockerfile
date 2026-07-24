@@ -12,11 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM python:3.13.1
+# Build stage: install dependencies using full Python image
+FROM python:3.11-slim AS builder
 
-ADD ./ /workspace/frontend
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --no-cache-dir --target=/packages -r requirements.txt
+
+# Final stage: minimal distroless image (runs as nonroot uid 65532 by default)
+FROM gcr.io/distroless/python3-debian12:nonroot
+
+COPY --from=builder /packages /packages
+COPY --chown=nonroot:nonroot . /workspace/frontend
+
 WORKDIR /workspace/frontend
 
-RUN pip install -r requirements.txt
+ENV PYTHONPATH=/packages
+ENV HF_HOME=/tmp/hf-cache
+# The root filesystem is read-only, so __pycache__ writes next to modules would fail on every
+# import. Skip them explicitly rather than retrying and failing.
+ENV PYTHONDONTWRITEBYTECODE=1
 
-CMD ["python", "main.py"]
+CMD ["main.py"]

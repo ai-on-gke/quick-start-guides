@@ -5,7 +5,7 @@
       "image": "gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0",
       "containerName": "cloud-sql-proxy"
     },
-    "message": "container \"cloud-sql-proxy\" in Deployment \"rag-frontend\" has an image \"gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0\" with no digest; valid image format: image[:tag]@sha256:\u003cdigest\u003e",
+    "message": "container \"cloud-sql-proxy\" in Deployment \"rag-frontend\" has an image \"gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.8.0\" with no digest; valid image format: image[:tag]@sha256:<digest>",
     "policyName": "imagedigest",
     "resourceKey": {
       "group": "apps",
@@ -15,4 +15,4 @@
       "version": "v1"
     }
   }
-] 
+]

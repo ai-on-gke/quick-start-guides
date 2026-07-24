@@ -72,6 +72,41 @@ steps:
   allowFailure: true
   waitFor: ["validate platform", "validate rag"]
 
+- id: 'build frontend image'
+  name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'build'
+  - '--platform'
+  - 'linux/amd64'
+  - '-t'
+  - 'gcr.io/$PROJECT_ID/rag-frontend:$SHORT_SHA'
+  - '.'
+  dir: '/workspace/rag/frontend/container'
+  waitFor: ['clone common-infra']
+
+- id: 'push frontend image'
+  name: 'gcr.io/cloud-builders/docker'
+  args:
+  - 'push'
+  - 'gcr.io/$PROJECT_ID/rag-frontend:$SHORT_SHA'
+  waitFor: ['build frontend image']
+
+# Resolve the pushed image to its immutable digest so the Deployment references
+# rag-frontend@sha256:... instead of a mutable tag. This keeps the imagedigest and
+# imagefreshness policies satisfied without needing allowlist entries.
+- id: 'get frontend image digest'
+  name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+  - '-c'
+  - |
+    set -e
+
+    docker inspect --format='{{index .RepoDigests 0}}' \
+      gcr.io/$PROJECT_ID/rag-frontend:$SHORT_SHA > /workspace/frontend_image_digest.txt
+    cat /workspace/frontend_image_digest.txt
+  waitFor: ['push frontend image']
+
 - id: 'create rag'
   name: "hashicorp/terraform:latest"
   entrypoint: 'sh'
@@ -122,10 +157,11 @@ steps:
     -var=rag_service_account=rag-sa-4-sec-$SHORT_SHA-$_BUILD_ID \
     -var=jupyter_service_account=jupyter-sa-4-sec-$SHORT_SHA-$_BUILD_ID \
     -var=cloudsql_instance=pgvector-sec-$SHORT_SHA-$_BUILD_ID \
+    -var=frontend_image=$$(cat /workspace/frontend_image_digest.txt) \
     -auto-approve -no-color
     echo "pass" > /workspace/rag_tf_result.txt
   allowFailure: true
-  waitFor: ['create gke cluster']
+  waitFor: ['create gke cluster', 'get frontend image digest']
 
 - id: 'Generate Kubeconfig For Security Scan'
   name: 'gcr.io/cloud-builders/gcloud'
@@ -226,6 +262,7 @@ steps:
     -var=rag_service_account=rag-sa-4-sec-$SHORT_SHA-$_BUILD_ID \
     -var=jupyter_service_account=jupyter-sa-4-sec-$SHORT_SHA-$_BUILD_ID \
     -var=cloudsql_instance=pgvector-sec-$SHORT_SHA-$_BUILD_ID \
+    -var=frontend_image=$$(cat /workspace/frontend_image_digest.txt) \
     -auto-approve -no-color
   allowFailure: true
   waitFor: ['Run shipshape on cluster', 'Run Shipshape on helm']

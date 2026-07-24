@@ -13,15 +13,35 @@
 # limitations under the License.
 
 project_id      = "<your project ID>"
+
+# RAG Frontend image — build and push before running terraform apply.
+#
+# Option A — local Docker build (requires Docker):
+#   cd rag/frontend/container
+#   docker build --platform linux/amd64 -t rag-frontend:latest .
+#   docker tag rag-frontend:latest <REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO>/rag-frontend:latest
+#   docker push <REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO>/rag-frontend:latest
+#
+# Option B — Cloud Build:
+#   cd rag/frontend/container
+#   gcloud builds submit --tag <REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO>/rag-frontend:latest .
+#
+# Then set the full image reference. Pin by digest so the deployed image cannot change underneath
+# you; get it after pushing with:
+#   docker inspect --format='{{index .RepoDigests 0}}' <IMAGE>
+frontend_image = "<REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO>/rag-frontend@sha256:<DIGEST>"
+# A mutable tag also works for quick local testing, but is not recommended outside of it:
+#   frontend_image = "<REGION>-docker.pkg.dev/<PROJECT_ID>/<REPO>/rag-frontend:latest"
 create_network  = true         # Creates a new VPC for your cluster. Disable to use an existing network.
 network_name    = "ml-network" # Creates a network named ml-network by default. If using an existing VPC, ensure you follow the README instructions to enable Private Service Connect for your VPC.
 subnetwork_cidr = "10.100.0.0/16"
 
-create_cluster    = true # Creates a GKE cluster in the specified network.
-cluster_name      = "<cluster-name>"
-cluster_location  = "us-central1"
-autopilot_cluster = true
-private_cluster   = false
+create_cluster     = true # Creates a GKE cluster in the specified network.
+cluster_name       = "<cluster-name>"
+cluster_location   = "us-central1"
+autopilot_cluster  = true
+private_cluster    = false
+kubernetes_version = "1.34"
 
 ## GKE environment variables
 kubernetes_namespace = "ai-on-gke"

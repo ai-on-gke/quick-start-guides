@@ -119,7 +119,7 @@ resource "kubernetes_deployment" "rag_frontend_deployment" {
         }
 
         container {
-          image = "us-central1-docker.pkg.dev/ai-on-gke/rag-on-gke/frontend@sha256:2b14a3a95f433cc394087ba0d6376d160d8080b62f485f1a119c52b8a6119368"
+          image = var.frontend_image
           name  = "rag-frontend"
 
           port {
@@ -130,6 +130,13 @@ resource "kubernetes_deployment" "rag_frontend_deployment" {
             name       = "secret-volume"
             mount_path = "/etc/secret-volume"
             read_only  = true
+          }
+
+          # Writable scratch for the read-only root filesystem. The HF cache (HF_HOME=/tmp/hf-cache)
+          # lives under this same volume, so its size is bounded by the limit below.
+          volume_mount {
+            name       = "tmp-dir"
+            mount_path = "/tmp"
           }
 
           env {
@@ -167,6 +174,8 @@ resource "kubernetes_deployment" "rag_frontend_deployment" {
 
           security_context {
             allow_privilege_escalation = false
+            read_only_root_filesystem  = true
+            run_as_non_root            = true
             capabilities {
               drop = ["ALL"]
             }
@@ -178,6 +187,15 @@ resource "kubernetes_deployment" "rag_frontend_deployment" {
             secret_name = var.db_secret_name
           }
           name = "secret-volume"
+        }
+
+        volume {
+          name = "tmp-dir"
+          empty_dir {
+            # Bounds scratch + the downloaded embedding model (intfloat/multilingual-e5-small,
+            # ~500Mi) so a pod cannot fill the node's disk.
+            size_limit = "2Gi"
+          }
         }
 
         volume {
