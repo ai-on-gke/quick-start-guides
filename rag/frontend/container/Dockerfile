@@ -20,7 +20,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --target=/packages -r requirements.txt
 
 # Final stage: minimal distroless image (runs as nonroot uid 65532 by default)
-FROM gcr.io/distroless/python3-debian12:nonroot
+FROM gcr.io/distroless/python3-debian12:latest
 
 COPY --from=builder /packages /packages
 COPY --chown=nonroot:nonroot . /workspace/frontend
